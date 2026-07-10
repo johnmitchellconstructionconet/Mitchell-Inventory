@@ -1,0 +1,2076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mitchell Inventory &amp; Pallet Tracking</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Anton&family=Bebas+Neue&family=Archivo+Black&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{
+  --navy:#1E2235; --navy2:#2A2F49; --taupe:#9E9589; --taupe-l:#D9D3C9; --gold:#AD8B5C;
+  --bg:#F5F4F1; --ink:#1E2235; --muted:#7B786F; --border:#E3E0D8;
+  --success:#3E7A5E; --success-bg:#E4EFE8; --warn:#8A6A2F; --warn-bg:#F2E9D8;
+  --danger:#A8382F; --danger-bg:#F5E4E2; --info:#3E4A8A; --info-bg:#E5E7F2;
+  --radius:10px; --font-ui:'Inter',sans-serif; --font-display:'Anton',sans-serif;
+}
+*{box-sizing:border-box}
+p{margin:0}
+body{margin:0;font-family:var(--font-ui);background:var(--bg);color:var(--ink);font-size:14px}
+h1,h2,h3{font-weight:600;margin:0}
+.app{display:block;min-height:100vh}
+.topheader{background:#fff;border-bottom:1px solid var(--border);padding:14px 28px;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.topheader-left{display:flex;align-items:center;gap:14px;min-width:0}
+.topheader-logo{height:38px;max-width:230px;object-fit:contain;flex-shrink:0}
+.topheader-logo-placeholder{height:38px;padding:0 16px;border:1.5px dashed var(--border);border-radius:8px;display:flex;align-items:center;font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0}
+.topheader-titles{display:flex;flex-direction:column;min-width:0}
+.topheader-company{font-weight:600;font-size:15px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topheader-sub{font-size:12px;color:var(--muted)}
+.topheader-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.topnav-btn{padding:9px 15px;border-radius:8px;border:1px solid var(--border);background:#fff;font-size:13px;color:var(--ink);cursor:pointer;white-space:nowrap}
+.topnav-btn:hover{border-color:var(--muted)}
+.topnav-btn.active{background:var(--bg);border-color:var(--ink);font-weight:500}
+.mainwrap{max-width:1320px;margin:0 auto;padding:0}
+.main{padding:30px 28px 40px;min-width:0}
+.topbar{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;gap:16px}
+.crumb{font-size:12.5px;color:var(--muted);cursor:pointer;margin-bottom:4px}
+.crumb:hover{color:var(--ink);text-decoration:underline}
+.sub{color:var(--muted);font-size:13px;margin-top:3px}
+.btn{border:1px solid var(--gold);background:var(--gold);color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{opacity:.9}
+.btn.secondary{background:#fff;color:var(--navy)}
+.btn.ghost{background:transparent;border-color:var(--border);color:var(--ink)}
+.btn.danger{background:var(--danger);border-color:var(--danger)}
+.btn.small{padding:5px 11px;font-size:12px;border-radius:6px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px}
+.grid{display:grid;gap:14px}
+.job-grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.job-card{cursor:pointer}
+.job-card:hover{border-color:var(--taupe)}
+.job-card h3{font-size:15px;margin-bottom:4px}
+.job-card .addr{font-size:12.5px;color:var(--muted);margin-bottom:10px}
+.stats{display:flex;gap:14px;margin-top:10px;font-size:12px;color:var(--muted)}
+.badge{display:inline-block;font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.03em}
+.badge.active{background:var(--success-bg);color:var(--success)}
+.badge.closed{background:#EFECE8;color:var(--muted)}
+.badge.rough{background:var(--warn-bg);color:var(--warn)}
+.badge.trim{background:var(--info-bg);color:var(--info)}
+.badge.missing{background:var(--danger-bg);color:var(--danger)}
+.badge.loc{background:#EFECE8;color:var(--ink)}
+.badge.cat{background:#EDE7F6;color:#5B4B8A}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:18px}
+.tab{padding:9px 4px;margin-right:18px;font-size:13.5px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
+.tab.active{color:var(--ink);font-weight:600;border-bottom-color:var(--navy)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--border)}
+td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr.rowlink{cursor:pointer}
+tr.rowlink:hover td{background:#FAFAF8}
+.card.rowlink{cursor:pointer}
+.card.rowlink:hover{border-color:var(--taupe)}
+.empty{padding:34px 20px;text-align:center;color:var(--muted);font-size:13px;border:1px dashed var(--border);border-radius:12px}
+.modal-overlay{position:fixed;inset:0;background:rgba(30,34,53,.55);display:flex;align-items:center;justify-content:center;z-index:80;padding:20px}
+.modal{background:#fff;border-radius:14px;max-width:620px;width:100%;max-height:90vh;overflow:auto;padding:26px}
+.modal.wide{max-width:760px}
+.modal-close{float:right;cursor:pointer;color:var(--muted);font-size:20px;line-height:1}
+label.f{display:block;font-size:11px;color:var(--muted);margin:14px 0 5px;font-weight:600;text-transform:uppercase;letter-spacing:.02em}
+input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:7px;font-family:var(--font-ui);font-size:13.5px}
+input[type="checkbox"],input[type="radio"]{width:16px;height:16px;flex:none;margin:0}
+textarea{resize:vertical;min-height:56px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.checklist{max-height:220px;overflow:auto;border:1px solid var(--border);border-radius:8px}
+.checklist label{display:flex;align-items:center;gap:10px;font-size:13px;padding:10px 12px;text-transform:none;font-weight:400;color:var(--ink);margin:0;border-bottom:1px solid var(--border);cursor:pointer}
+.checklist label:last-child{border-bottom:none}
+.checklist label:hover{background:#FAFAF8}
+.checklist label .cl-code{color:var(--muted);font-size:12px;min-width:56px}
+.checklist label .cl-name{flex:1}
+.checklist .none{color:var(--muted);font-size:12.5px;padding:14px 12px}
+.hint{font-size:11.5px;color:var(--muted);margin-top:5px}
+.divider{border:none;border-top:1px solid var(--border);margin:18px 0}
+.history{font-size:12px;color:var(--muted);margin-top:6px}
+.history div{padding:4px 0;border-bottom:1px dashed var(--border)}
+/* label templates */
+.label{border:2.5px solid var(--ink);border-radius:16px;padding:10px;background:#fff;width:100%;max-width:560px;margin:0 auto}
+.lk{font-size:12px;font-weight:600;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.ltitle{font-family:var(--font-display);font-size:29px;line-height:1.05;margin:3px 0 6px;text-transform:uppercase;letter-spacing:.01em}
+.lhr{border:none;border-top:1.5px solid var(--ink);margin:4px 0}
+.lvariant{font-size:16px;font-weight:600;color:var(--muted);margin-top:2px}
+.ltop{display:grid;grid-template-columns:1fr 118px;gap:12px}
+.lmid2{display:grid;grid-template-columns:1fr 118px;gap:10px;margin-top:10px}
+.lgrid{display:grid;grid-template-columns:1fr 156px;gap:10px}
+.lleft{display:flex;flex-direction:column;height:100%}
+.lphotorow{display:grid;grid-template-columns:96px 1fr;gap:10px;margin-top:8px;flex:1}
+.lright{display:flex;flex-direction:column;align-items:center}
+.lright .qrwrap{width:100%}
+.lhr2{width:100%;border:none;border-top:1px solid var(--border);margin:4px 0}
+.lplanwrap{display:flex;flex-direction:column;align-items:center;flex:1;justify-content:center;gap:5px}
+.lphoto{border:1px solid var(--border);border-radius:7px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted);text-align:center;background:#FAFAF8}
+.lphoto img{width:100%;height:100%;object-fit:cover}
+.ldbox{border:1px solid var(--border);border-radius:7px;display:grid;grid-template-columns:1fr 1fr;overflow:hidden;background:#FAFAF8}
+.ldcell{padding:8px 10px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:center}
+.ldcell:last-child{border-right:none}
+.lfield{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.lval{font-size:19px;font-weight:700;margin-top:4px;font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.01em}
+.lcircle{width:90px;height:90px;border-radius:50%;border:2px solid var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;background:#FAFAF8}
+.lcirclbl{font-size:8px;color:var(--muted)}
+.lcircval{font-size:24px;font-family:'Oswald',sans-serif;font-weight:700;line-height:1;letter-spacing:.01em}
+.lbottom{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);margin-top:7px;padding-top:7px}
+.lcatwrap{display:flex;align-items:center;gap:7px}
+.lcaticon{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--ink);display:flex;align-items:center;justify-content:center;color:var(--ink);flex-shrink:0}
+.llogowrap{display:flex;align-items:center;gap:7px}
+.llogobox{width:160px;height:54px;border:1.5px dashed var(--border);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--muted);overflow:hidden;flex-shrink:0}
+.llogobox img{width:100%;height:100%;object-fit:contain}
+.lfooterinfo{font-size:8.5px;color:var(--muted);text-align:center;margin-top:7px;letter-spacing:.02em}
+.lconame{font-size:11px;font-weight:600}
+.qrwrap{width:100%;aspect-ratio:1;border:2px solid var(--ink);border-radius:6px;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:3px;background:#fff;cursor:pointer}
+.qrwrap img,.qrwrap canvas{width:100% !important;height:100% !important}
+.qrpair{display:flex;gap:6px}
+.qrpair .qrwrap{width:50%}
+.qrlbl{text-align:center;font-size:8px;color:var(--muted);margin-top:2px}
+.qrblock-bottom{display:flex;flex-direction:column;align-items:center;gap:3px}
+.qrpair-lg{display:flex;gap:10px}
+.qrwrap-lg{width:98px;height:98px;border:2px solid var(--ink);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:4px;background:#fff}
+.qrwrap-lg.empty{font-size:8px;color:var(--muted);text-align:center}
+.qrlbl-lg{text-align:center;font-size:9px;color:var(--muted);width:98px}
+.qrlblrow-lg{display:flex;gap:10px}
+.label-actions{display:flex;gap:8px;justify-content:center;margin-top:16px}
+/* engineering-spec item label */
+.selbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;background:var(--navy);color:#fff;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px}
+.selbar .n{font-weight:600}
+.selbar .spacer{flex:1}
+.selbar button{border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;padding:6px 12px;border-radius:6px;font-size:12.5px;cursor:pointer}
+.selbar button:hover{background:rgba(255,255,255,.12)}
+.rowthumb{width:32px;height:32px;border-radius:6px;border:1px solid var(--border);object-fit:cover;background:var(--bg)}
+.stat-tile{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+.stat-tile .num{font-size:32px;font-weight:600;line-height:1}
+.stat-tile .num.warn{color:var(--danger)}
+.stat-tile .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-top:4px}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.stat-grid-4{grid-template-columns:repeat(4,1fr)}
+.attention-panel{background:#FBF6EC;border:1px solid #EDE0C2;border-radius:12px;padding:16px 18px;margin-bottom:22px}
+.attention-panel .ap-head{font-weight:600;font-size:14px;margin-bottom:2px}
+.attention-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid #EDE0C2;cursor:pointer}
+.attention-row:hover .an{text-decoration:underline}
+.tasks-panel{background:#FBF6EC;border:1px solid #EDE0C2;border-radius:12px;padding:16px 18px;margin-bottom:20px}
+.tasks-panel .tp-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.tasks-panel .tp-title{font-weight:600;font-size:16px}
+.tasks-panel .tp-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+.tasks-panel .tp-sub strong{color:var(--danger)}
+.tp-filter{display:flex;gap:4px;background:#fff;border:1px solid #EDE0C2;border-radius:8px;padding:2px}
+.tp-filter button{border:none;background:transparent;padding:5px 10px;font-size:12px;border-radius:6px;cursor:pointer;color:var(--muted)}
+.tp-filter button.active{background:var(--navy);color:#fff}
+.task-row{display:flex;align-items:flex-start;gap:10px;background:#fff;border:1px solid #EDE0C2;border-radius:9px;padding:11px 13px;margin-top:8px}
+.task-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);margin-top:5px;flex-shrink:0}
+.task-dot.overdue{background:var(--danger)}
+.task-main{flex:1;min-width:0}
+.task-title{font-weight:600;font-size:13.5px}
+.task-sub{font-size:12px;color:var(--muted);margin-top:1px}
+.task-note{margin-top:6px;padding-left:10px;border-left:2px solid #EDE0C2;font-size:12px;color:var(--ink)}
+.task-note .tn-lbl{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-right:5px}
+.task-right{text-align:right;flex-shrink:0}
+.task-date{font-size:11px;color:var(--muted);margin-top:4px}
+.task-date.overdue{color:var(--danger);font-weight:600}
+.rowthumb.empty{display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted)}
+.split-tag{display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--info);margin-top:3px;cursor:pointer;font-weight:500}
+.split-tag:hover{text-decoration:underline}
+.ccard-check{position:absolute;top:14px;left:14px}
+.loc-group-header{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:2px solid var(--navy);margin-bottom:2px}
+.loc-group-header .lgname{font-weight:600;font-size:14px}
+.loc-group-header .lgcount{background:var(--taupe-l);color:var(--navy);font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px}
+.loc-group-header.exception{border-bottom-color:var(--danger)}
+.lg-collapse{cursor:pointer;color:var(--muted);font-size:12px;user-select:none;width:16px;text-align:center;flex-shrink:0}
+.lg-collapse:hover{color:var(--ink)}
+
+@media print{
+  .app,#modalRoot{display:none !important}
+  #printArea{display:block !important;position:static;width:100%;padding:0}
+  #printArea .label{width:100% !important;height:100% !important;max-width:none;margin:0;box-sizing:border-box;page-break-inside:avoid}
+  #printArea .label-page{page-break-after:always;width:100%;height:100%}
+  #printArea .label-page:last-child{page-break-after:auto}
+}
+</style>
+</head>
+<body>
+<div id="bootScreen" style="position:fixed;inset:0;background:#F5F4F1;z-index:999;display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;color:#1E2235;font-size:14px;">Loading inventory data&hellip;</div>
+<div id="syncBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#A8382F;color:#fff;font-family:'Inter',sans-serif;font-size:12.5px;text-align:center;padding:8px;z-index:998;">Connection to database lost. Changes will not be saved until this reloads.</div>
+<div id="app" class="app"></div>
+<div id="modalRoot"></div>
+<div id="printArea" style="display:none"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+/* ---------------- supabase config ---------------- */
+/* Fill these in with your Supabase project's values (Project Settings -> API). */
+const SUPABASE_URL='https://sdjngmiworhiwwcbkfzm.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNkam5nbWl3b3JoaXd3Y2JrZnptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3MTcyNjMsImV4cCI6MjA5OTI5MzI2M30.Yjs6W2Xw0VLPFGA9HvDPpZnlP-JYIEBoNSYQ1wG2_Z0';
+const STATE_ROW_ID='main'; // single shared row holding the whole app state
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+
+/* ---------------- data layer ---------------- */
+const DB_KEY='mcd_inventory_demo_v1';
+const LOCATIONS=[
+  {key:'office',label:'Office',rank:1},
+  {key:'warehouse',label:'Warehouse',rank:2},
+  {key:'onsite',label:'On-Site',rank:3},
+  {key:'installed',label:'Installed',rank:4}
+];
+const EXCEPTIONS=[{key:'missing',label:'Missing / Lost'},{key:'returned',label:'Returned'}];
+const ALL_LOCS=[...LOCATIONS,...EXCEPTIONS];
+const CONTAINER_LOCS=[...LOCATIONS.filter(l=>l.key!=='installed'),EXCEPTIONS.find(e=>e.key==='missing')];
+const DEFAULT_CATEGORIES=['Plumbing','Electrical','HVAC','Framing','Drywall','Flooring','Cabinetry & Millwork','Windows & Doors','Roofing','Concrete','Hardware','Appliances','Finish / Trim','Landscaping','General'];
+function cats(){return DB.settings.categories||DEFAULT_CATEGORIES;}
+function locLabel(k){const l=ALL_LOCS.find(x=>x.key===k);return l?l.label:k;}
+function isException(k){return EXCEPTIONS.some(x=>x.key===k);}
+function rankOf(k){const l=LOCATIONS.find(x=>x.key===k);return l?l.rank:null;}
+
+function seed(){
+  const now=Date.now();
+  const db={
+    counters:{job:1,item:5,pallet:12,tote:4,generic:0},
+    settings:{logo:'',companyName:'Mitchell Construction & Design',font:'Anton',categories:[...DEFAULT_CATEGORIES],labelInfo:''},
+    jobs:[{id:'j1',name:'Morris',address:'4410 Bareis Rd, Springfield, MO',status:'active',createdAt:now}],
+    containers:[
+      {id:'c1',code:'P-012',type:'pallet',jobId:'j1',parentId:null,category:'Plumbing',location:'warehouse',createdAt:now},
+      {id:'c2',code:'T-004',type:'tote',jobId:'j1',parentId:'c1',category:'Plumbing',location:'warehouse',createdAt:now}
+    ],
+    items:[
+      {id:'i1',code:'IT-0001',jobId:'j1',productName:'Delta Trinsic Single Hole Faucet',variant:'Matte black',vendor:'Build.com',category:'Plumbing',phase:'trim-out',trackAs:'individual',qty:1,roomLocation:'Kitchen Island',planMarker:'K12',planUrl:'https://plans.mitchellconstruction.com/morris?marker=K12',photo:'',containerId:'c1',location:'warehouse',createdAt:now},
+      {id:'i2',code:'IT-0002',jobId:'j1',productName:'PEX Shutoff Valves',variant:'1/2 in',vendor:'Ferguson',category:'Plumbing',phase:'rough-in',trackAs:'package',qty:6,roomLocation:'Whole house',planMarker:'',photo:'',containerId:'c2',location:'warehouse',createdAt:now},
+      {id:'i3',code:'IT-0003',jobId:'j1',productName:'Copper Fittings Assortment',variant:'',vendor:'Ferguson',category:'Plumbing',phase:'rough-in',trackAs:'package',qty:1,roomLocation:'Whole house',planMarker:'',photo:'',containerId:'c2',location:'warehouse',createdAt:now},
+      {id:'i4',code:'IT-0004',jobId:'j1',productName:'Bathroom Mirror',variant:'30x40',vendor:'Build.com',category:'Finish',phase:'trim-out',trackAs:'individual',qty:1,roomLocation:'Primary bath',planMarker:'',photo:'',containerId:null,location:'office',createdAt:now},
+      {id:'i5',code:'IT-0005',jobId:'j1',productName:'Door Stops',variant:'',vendor:'Amazon',category:'Hardware',phase:'trim-out',trackAs:'package',qty:5,roomLocation:'Whole house',planMarker:'',photo:'',containerId:null,location:'office',createdAt:now}
+    ],
+    generics:[],
+    splitNotes:{},
+    users:[{id:'u1',name:'John Mitchell',email:'',phone:'',pin:'1234'},{id:'u2',name:'Kennedy Adamson',email:'',phone:'',pin:'2345'},{id:'u3',name:'Bre Mitchell',email:'',phone:'',pin:'3456'}],
+    currentUserId:'u1',
+    tasks:[],
+    log:[{id:'l1',entityType:'container',entityId:'c1',code:'P-012',prev:'office',next:'warehouse',trigger:'manual',changedBy:'John Mitchell',changedAt:now}]
+  };
+  return db;
+}
+let DB=null;
+function hydrate(d){
+  if(d.settings && !d.settings.categories) d.settings.categories=[...DEFAULT_CATEGORIES];
+  if(!d.splitNotes) d.splitNotes={};
+  if(!d.users){d.users=[{id:'u1',name:'John Mitchell',email:'',phone:'',pin:'1234'},{id:'u2',name:'Kennedy Adamson',email:'',phone:'',pin:'2345'},{id:'u3',name:'Bre Mitchell',email:'',phone:'',pin:'3456'}]; d.currentUserId='u1';}
+  else { d.users.forEach(u=>{ if(u.email===undefined) u.email=''; if(u.phone===undefined) u.phone=''; if(!u.pin) u.pin='0000'; }); }
+  if(!d.tasks) d.tasks=[];
+  return d;
+}
+async function loadFromSupabase(){
+  try{
+    const {data,error}=await sb.from('inventory_state').select('data').eq('id',STATE_ROW_ID).maybeSingle();
+    if(error) throw error;
+    if(data && data.data){
+      localStorage.setItem(DB_KEY,JSON.stringify(data.data));
+      return hydrate(data.data);
+    }
+    const s=seed();
+    const {error:insErr}=await sb.from('inventory_state').upsert({id:STATE_ROW_ID,data:s});
+    if(insErr) throw insErr;
+    localStorage.setItem(DB_KEY,JSON.stringify(s));
+    return s;
+  }catch(e){
+    console.error('Supabase load failed, falling back to local cache',e);
+    document.getElementById('syncBanner').style.display='block';
+    const raw=localStorage.getItem(DB_KEY);
+    if(raw){ try{return hydrate(JSON.parse(raw));}catch(e2){} }
+    return seed();
+  }
+}
+let saveTimer=null;
+function save(){
+  localStorage.setItem(DB_KEY,JSON.stringify(DB));
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(pushToSupabase,150);
+}
+async function pushToSupabase(){
+  try{
+    const {error}=await sb.from('inventory_state').upsert({id:STATE_ROW_ID,data:DB,updated_at:new Date().toISOString()});
+    if(error) throw error;
+    document.getElementById('syncBanner').style.display='none';
+  }catch(e){
+    console.error('Supabase save failed - this change is only saved on this device until connection is restored',e);
+    document.getElementById('syncBanner').style.display='block';
+  }
+}
+async function resetDemo(){
+  const s=seed();
+  DB=s;
+  localStorage.setItem(DB_KEY,JSON.stringify(s));
+  try{ const {error}=await sb.from('inventory_state').upsert({id:STATE_ROW_ID,data:s}); if(error) throw error; }
+  catch(e){ console.error('Supabase reset failed',e); }
+  AUTHENTICATED=false;
+  UI={view:'dashboard',jobId:null,tab:'items'};
+  render();
+}
+function subscribeRealtime(){
+  sb.channel('inventory_state_changes')
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'inventory_state',filter:'id=eq.'+STATE_ROW_ID},payload=>{
+      if(!payload.new || !payload.new.data) return;
+      if(document.getElementById('modalRoot').innerHTML.trim()!==''){ return; } // don't clobber an open form
+      DB=hydrate(payload.new.data);
+      localStorage.setItem(DB_KEY,JSON.stringify(DB));
+      render();
+    })
+    .subscribe();
+}
+
+function currentUser(){return DB.users.find(u=>u.id===DB.currentUserId)||DB.users[0];}
+function currentUserName(){const u=currentUser(); return u?u.name:'Unknown';}
+function switchUser(id){DB.currentUserId=id; render();}
+function uid(p){return p+'_'+Math.random().toString(36).slice(2,9);}
+function nextCode(type){
+  DB.counters[type]=(DB.counters[type]||0)+1;
+  const n=String(DB.counters[type]).padStart(4,'0');
+  const map={item:'IT-',pallet:'P-0',tote:'T-0',job:'J-',generic:'G-'};
+  if(type==='pallet'||type==='tote') return map[type]+String(DB.counters[type]).padStart(2,'0');
+  return map[type]+n;
+}
+function fmtDate(ts){return new Date(ts).toLocaleDateString(undefined,{month:'short',day:'numeric'});}
+function fmtDateTime(ts){return new Date(ts).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});}
+
+function getJob(id){return DB.jobs.find(j=>j.id===id);}
+function getContainer(id){return DB.containers.find(c=>c.id===id);}
+function getItem(id){return DB.items.find(i=>i.id===id);}
+function itemsInJob(jobId){return DB.items.filter(i=>i.jobId===jobId);}
+function containersInJob(jobId,type){return DB.containers.filter(c=>c.jobId===jobId&&(!type||c.type===type));}
+
+function addLog(entityType,entityId,code,prev,next,trigger,changedBy){
+  DB.log.unshift({id:uid('l'),entityType,entityId,code,prev,next,trigger,changedBy:changedBy||currentUserName(),changedAt:Date.now()});
+}
+function historyFor(entityId){return DB.log.filter(l=>l.entityId===entityId).slice(0,8);}
+
+/* ---------------- cascade logic ---------------- */
+function cascadeContainer(containerId,newLoc,trigger,changedBy){
+  const c=getContainer(containerId);
+  if(!c) return;
+  const prev=c.location;
+  if(trigger==='manual' && c.type==='tote' && c.parentId){
+    const parent=getContainer(c.parentId);
+    c.parentId=null;
+    addLog('container',c.id,c.code,prev,newLoc,'manual (detached from '+(parent?parent.code:'pallet')+')',changedBy);
+  } else {
+    addLog('container',c.id,c.code,prev,newLoc,trigger,changedBy);
+  }
+  c.location=newLoc;
+
+  // direct items on this container
+  itemsInJob(c.jobId).filter(i=>i.containerId===c.id).forEach(it=>{
+    if(shouldSkip(it.location,newLoc)) return;
+    const p=it.location;
+    it.location=newLoc;
+    addLog('item',it.id,it.code,p,newLoc,'cascade from '+c.code,changedBy);
+  });
+
+  // nested containers (totes on a pallet)
+  DB.containers.filter(x=>x.parentId===c.id).forEach(child=>{
+    if(shouldSkip(child.location,newLoc)) return;
+    cascadeContainer(child.id,newLoc,'cascade from '+c.code,changedBy);
+  });
+}
+function shouldSkip(currentLoc,newLoc){
+  if(currentLoc==='installed') return true; // already past every stage
+  if(isException(currentLoc)) return true; // missing/returned frozen until manually cleared
+  if(!isException(newLoc)){
+    const cr=rankOf(currentLoc), nr=rankOf(newLoc);
+    if(cr!==null && nr!==null && cr>nr) return true; // already further along
+  }
+  return false;
+}
+function setItemLocationDirect(itemId,newLoc,changedBy){
+  const it=getItem(itemId); if(!it) return;
+  const prev=it.location; it.location=newLoc;
+  if(newLoc==='installed' && it.containerId){
+    const c=getContainer(it.containerId);
+    it.containerId=null;
+    addLog('item',it.id,it.code,prev,newLoc,'manual (auto-removed from '+(c?c.code:'container')+' on install)',changedBy);
+  } else {
+    addLog('item',it.id,it.code,prev,newLoc,'manual',changedBy);
+  }
+}
+function removeItemFromContainer(itemId){
+  const it=getItem(itemId); if(!it||!it.containerId) return;
+  const c=getContainer(it.containerId);
+  it.containerId=null;
+  addLog('item',it.id,it.code,it.location,it.location,'removed from '+(c?c.code:'container'),currentUserName());
+  closeModal(); render(); openItemModal(it.id);
+}
+
+/* ---------------- UI state ---------------- */
+let AUTHENTICATED=false;
+let UI={view:'dashboard',jobId:null,tab:'items',cat:'all',q:'',taskFilter:'mine'};
+function setCatFilter(v){UI.cat=v;render();}
+function setSearch(v){UI.q=v;render();}
+function setTaskFilter(v){UI.taskFilter=v;render();}
+function searchBoxHTML(placeholder){
+  return `<input id="searchBox" style="width:220px" value="${escapeHtml(UI.q)}" placeholder="${placeholder}" oninput="setSearch(this.value)">`;
+}
+let SELECTION={type:null,ids:new Set()};
+function toggleSelect(type,id){
+  if(SELECTION.type!==type){SELECTION={type,ids:new Set()};}
+  if(SELECTION.ids.has(id)) SELECTION.ids.delete(id); else SELECTION.ids.add(id);
+  render();
+}
+function toggleSelectGroup(type,ids,checked){
+  if(SELECTION.type!==type){SELECTION={type,ids:new Set()};}
+  ids.forEach(id=>{ if(checked) SELECTION.ids.add(id); else SELECTION.ids.delete(id); });
+  render();
+}
+let COLLAPSED_GROUPS=new Set();
+function toggleGroupCollapse(key){
+  if(COLLAPSED_GROUPS.has(key)) COLLAPSED_GROUPS.delete(key); else COLLAPSED_GROUPS.add(key);
+  render();
+}
+function setAllGroupsCollapsed(prefix,keys,collapsed){
+  keys.forEach(k=>{ const full=prefix+':'+k; if(collapsed) COLLAPSED_GROUPS.add(full); else COLLAPSED_GROUPS.delete(full); });
+  render();
+}
+function clearSelection(){SELECTION={type:null,ids:new Set()};}
+
+function render(){
+  save();
+  const active=document.activeElement;
+  const activeId=active&&active.id?active.id:null;
+  const selStart=(active&&typeof active.selectionStart==='number')?active.selectionStart:null;
+  const selEnd=(active&&typeof active.selectionEnd==='number')?active.selectionEnd:null;
+  const app=document.getElementById('app');
+  if(!AUTHENTICATED){
+    app.innerHTML=loginScreenHTML();
+    return;
+  }
+  app.innerHTML=topHeaderHTML()+'<div class="mainwrap"><div class="main">'+mainHTML()+'</div></div>';
+  if(activeId){
+    const el=document.getElementById(activeId);
+    if(el){
+      el.focus();
+      if(selStart!=null && el.setSelectionRange){ try{el.setSelectionRange(selStart,selEnd);}catch(e){} }
+    }
+  }
+}
+function loginScreenHTML(){
+  const s=DB.settings;
+  return `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px">
+    <div style="max-width:380px;width:100%">
+      <div style="text-align:center;margin-bottom:26px">
+        ${s.logo?`<img src="${s.logo}" style="height:44px;max-width:260px;object-fit:contain">`:`<div style="font-weight:600;font-size:18px">${escapeHtml(s.companyName)}</div>`}
+        <div class="sub" style="margin-top:6px">Inventory &amp; pallet tracking &mdash; sign in to continue</div>
+      </div>
+      <div class="card">
+        <label class="f">Login code</label>
+        <input id="loginPinInput" type="password" maxlength="8" autocomplete="off" onkeydown="if(event.key==='Enter')submitLogin()">
+        <div id="loginPinErr" style="display:none;color:var(--danger);font-size:12px;margin-top:4px"></div>
+        <button class="btn" style="width:100%;margin-top:12px" onclick="submitLogin()">Sign in</button>
+      </div>
+      <div style="text-align:center;margin-top:14px">
+        <span class="sub" style="cursor:pointer;text-decoration:underline" onclick="if(confirm('This wipes all demo data on this device and starts over with default codes (1234 / 2345 / 3456). Only do this if you\\'re genuinely locked out. Continue?'))resetDemo()">Locked out? Reset this device's demo data</span>
+      </div>
+    </div>
+  </div>`;
+}
+function submitLogin(){
+  const entered=document.getElementById('loginPinInput').value.trim();
+  const errEl=document.getElementById('loginPinErr');
+  const u=entered?DB.users.find(x=>x.pin===entered):null;
+  if(!u){
+    errEl.textContent='Code not recognized.';
+    errEl.style.display='block';
+    return;
+  }
+  DB.currentUserId=u.id;
+  AUTHENTICATED=true;
+  UI={view:'dashboard',jobId:null,tab:'items',cat:'all',q:'',taskFilter:'mine'};
+  render();
+}
+function logOut(){
+  AUTHENTICATED=false;
+  render();
+}
+function go(view,jobId,tab){UI={view,jobId:jobId||null,tab:tab||'items',cat:'all',q:'',taskFilter:'mine'};clearSelection();render();}
+
+function topHeaderHTML(){
+  const openGenerics=DB.generics.filter(g=>g.status==='unassigned').length;
+  const s=DB.settings;
+  return `<div class="topheader">
+    <div class="topheader-left">
+      ${s.logo?`<img class="topheader-logo" src="${s.logo}">`:'<div class="topheader-logo-placeholder">Upload logo in Settings</div>'}
+      <div class="topheader-titles">
+        <div class="topheader-company">${escapeHtml(s.companyName)}</div>
+        <div class="topheader-sub">Inventory &amp; pallet tracking</div>
+      </div>
+    </div>
+    <div class="topheader-right">
+      <button class="topnav-btn ${UI.view==='dashboard'?'active':''}" onclick="go('dashboard')">Jobs</button>
+      <button class="topnav-btn ${UI.view==='generic'?'active':''}" onclick="go('generic')">Generic label queue${openGenerics?' ('+openGenerics+')':''}</button>
+      <button class="topnav-btn ${UI.view==='settings'?'active':''}" onclick="go('settings')">Settings</button>
+      <button class="btn" onclick="openNewJobModal()">+ New job</button>
+      <span class="sub" style="margin-left:6px">${escapeHtml(currentUserName())}</span>
+      <button class="btn ghost small" onclick="logOut()">Log out</button>
+    </div>
+  </div>`;
+}
+
+function mainHTML(){
+  if(UI.view==='dashboard') return dashboardHTML();
+  if(UI.view==='job') return jobHTML();
+  if(UI.view==='generic') return genericQueueHTML();
+  if(UI.view==='settings') return settingsHTML();
+  return '';
+}
+
+/* ---------------- dashboard ---------------- */
+function dashboardHTML(){
+  const jobs=DB.jobs;
+  const activeJobs=jobs.filter(j=>j.status==='active');
+  const activeIds=new Set(activeJobs.map(j=>j.id));
+  const activeItems=DB.items.filter(i=>activeIds.has(i.jobId));
+  const unassigned=activeItems.filter(i=>!i.containerId && !isException(i.location));
+  const missingItems=activeItems.filter(i=>i.location==='missing');
+  const missingContainers=DB.containers.filter(c=>activeIds.has(c.jobId)&&c.location==='missing');
+  const missingCount=missingItems.length+missingContainers.length;
+  const returnedItems=activeItems.filter(i=>i.location==='returned');
+  const returnedContainers=DB.containers.filter(c=>activeIds.has(c.jobId)&&c.location==='returned');
+  const returnedCount=returnedItems.length+returnedContainers.length;
+  const attentionRows=[
+    ...missingItems.map(i=>({label:i.code+' \u2014 '+i.productName,job:getJob(i.jobId).name,onclick:`go('job','${i.jobId}','items')`})),
+    ...missingContainers.map(c=>({label:c.code+' ('+type_label(c.type)+')',job:getJob(c.jobId).name,onclick:`go('job','${c.jobId}','${c.type}s')`}))
+  ];
+  return `<div class="stat-grid stat-grid-4">
+      <div class="stat-tile"><div class="num">${activeItems.length}</div><div class="lbl">Items tracked</div></div>
+      <div class="stat-tile"><div class="num">${unassigned.length}</div><div class="lbl">Unassigned items</div></div>
+      <div class="stat-tile"><div class="num ${missingCount?'warn':''}">${missingCount}</div><div class="lbl">Missing / lost</div></div>
+      <div class="stat-tile"><div class="num ${returnedCount?'warn':''}">${returnedCount}</div><div class="lbl">Needing returned</div></div>
+    </div>
+    ${tasksPanelHTML()}
+    ${attentionRows.length?`<div class="attention-panel">
+      <div class="ap-head">Needs attention</div>
+      <div class="sub">${attentionRows.length} item${attentionRows.length===1?'':'s'} flagged missing or lost</div>
+      ${attentionRows.map(r=>`<div class="attention-row" onclick="${r.onclick}"><span class="an">${escapeHtml(r.label)}</span><span class="sub">${escapeHtml(r.job)}</span></div>`).join('')}
+    </div>`:''}
+    <div class="topbar">
+      <div><h1>Jobs</h1><div class="sub">Active projects with tracked inventory</div></div>
+      <button class="btn" onclick="openNewJobModal()">+ New job</button>
+    </div>
+    <div class="grid job-grid">
+      ${jobs.length? jobs.map(jobCardHTML).join('') : '<div class="empty">No jobs yet. Create one to start tracking inventory.</div>'}
+    </div>`;
+}
+function jobCardHTML(j){
+  const items=itemsInJob(j.id);
+  const pallets=containersInJob(j.id,'pallet');
+  const totes=containersInJob(j.id,'tote');
+  return `<div class="card job-card" onclick="go('job','${j.id}')">
+    <span class="badge ${j.status}">${j.status}</span>
+    <h3 style="margin-top:8px">${escapeHtml(j.name)}</h3>
+    <div class="addr">${escapeHtml(j.address||'')}</div>
+    <div class="stats">
+      <span>${items.length} items</span>
+      <span>${pallets.length} pallets</span>
+      <span>${totes.length} totes</span>
+    </div>
+  </div>`;
+}
+function openNewJobModal(){
+  openModal(`<span class="modal-close" onclick="closeModal()">&times;</span>
+    <h2>New job</h2>
+    <label class="f">Job name</label><input id="njName" placeholder="e.g. Anderson">
+    <div id="njErr" style="display:none;color:var(--danger);font-size:12px;margin-top:4px"></div>
+    <label class="f">Address</label><input id="njAddr" placeholder="Street, city">
+    <div class="row" style="margin-top:20px;justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="submitNewJob()">Create job</button>
+    </div>`);
+}
+function submitNewJob(){
+  const name=document.getElementById('njName').value.trim();
+  const errEl=document.getElementById('njErr');
+  if(!name){errEl.textContent='Job name is required.';errEl.style.display='block';return;}
+  const addr=document.getElementById('njAddr').value.trim();
+  const j={id:uid('j'),name,address:addr,status:'active',createdAt:Date.now()};
+  DB.jobs.push(j); closeModal(); go('job',j.id);
+}
+function closeJob(id){
+  const j=getJob(id); if(!j) return;
+  if(!confirm('Close this job? It will move out of the active list.')) return;
+  j.status='closed'; render();
+}
+function reopenJob(id){const j=getJob(id); if(j){j.status='active'; render();}}
+
+/* ---------------- job detail ---------------- */
+function jobHTML(){
+  const j=getJob(UI.jobId);
+  if(!j) return '<div class="empty">Job not found.</div>';
+  const items=itemsInJob(j.id);
+  const pallets=containersInJob(j.id,'pallet');
+  const totes=containersInJob(j.id,'tote');
+  return `<div class="crumb" onclick="go('dashboard')">&larr; All jobs</div>
+    <div class="topbar">
+      <div><h1>${escapeHtml(j.name)} <span class="badge ${j.status}" style="margin-left:8px">${j.status}</span></h1>
+      <div class="sub">${escapeHtml(j.address||'')}</div></div>
+      <div class="row">
+        ${j.status==='active'?`<button class="btn ghost" onclick="closeJob('${j.id}')">Close job</button>`:`<button class="btn ghost" onclick="reopenJob('${j.id}')">Reopen job</button>`}
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab ${UI.tab==='items'?'active':''}" onclick="go('job','${j.id}','items')">Items (${items.length})</div>
+      <div class="tab ${UI.tab==='pallets'?'active':''}" onclick="go('job','${j.id}','pallets')">Pallets (${pallets.length})</div>
+      <div class="tab ${UI.tab==='totes'?'active':''}" onclick="go('job','${j.id}','totes')">Totes (${totes.length})</div>
+    </div>
+    ${UI.tab==='items'?itemsTabHTML(j): UI.tab==='pallets'?palletsTabHTML(j):totesTabHTML(j)}`;
+}
+
+function catBadge(cat){return `<span class="badge cat">${escapeHtml(cat||'General')}</span>`;}
+function catFilterHTML(){
+  return `<select style="width:auto;min-width:170px" onchange="setCatFilter(this.value)">
+    <option value="all" ${UI.cat==='all'?'selected':''}>All categories</option>
+    ${cats().map(c=>`<option value="${c}" ${UI.cat===c?'selected':''}>${c}</option>`).join('')}
+  </select>`;
+}
+function containerBadge(loc){
+  const cls=isException(loc)?'missing':'loc';
+  return `<span class="badge ${cls}">${locLabel(loc)}</span>`;
+}
+function phaseBadge(phase){return `<span class="badge ${phase==='rough-in'?'rough':'trim'}">${phase==='rough-in'?'Rough-in':'Trim-out'}</span>`;}
+
+function selectionBarHTML(type,label){
+  if(SELECTION.type!==type || SELECTION.ids.size===0) return '';
+  return `<div class="selbar">
+    <span class="n">${SELECTION.ids.size} ${label}${SELECTION.ids.size===1?'':'s'} selected</span>
+    <div class="spacer"></div>
+    <button onclick="bulkPrintLabels('${type}')">Print labels (4&times;6)</button>
+    ${type!=='generic'?`<button onclick="openBulkStatusModal('${type}')">Change status</button>`:''}
+    ${type==='item'?`<button onclick="openBulkPhaseModal()">Change phase</button>`:''}
+    <button onclick="confirmBulkDelete('${type}')" style="color:#F5C2BC">Delete</button>
+    <button onclick="clearSelection();render()">Clear</button>
+  </div>`;
+}
+function confirmBulkDelete(type){
+  const n=SELECTION.ids.size;
+  const noun=type==='item'?'item':type==='generic'?'generic label':'pallet/tote';
+  if(!confirm(`Delete ${n} ${noun}${n===1?'':'s'}? This can't be undone. Anything assigned to a deleted pallet or tote becomes unassigned rather than being deleted with it.`)) return;
+  const ids=[...SELECTION.ids];
+  if(type==='item'){
+    ids.forEach(id=>{ DB.items=DB.items.filter(i=>i.id!==id); });
+  } else if(type==='container'){
+    ids.forEach(id=>{
+      itemsInJob(getContainer(id)?getContainer(id).jobId:'').forEach(i=>{ if(i.containerId===id) i.containerId=null; });
+      DB.containers.filter(x=>x.parentId===id).forEach(t=>{ t.parentId=null; });
+      DB.containers=DB.containers.filter(c=>c.id!==id);
+    });
+  } else if(type==='generic'){
+    DB.generics=DB.generics.filter(g=>!ids.includes(g.id));
+  }
+  clearSelection(); render();
+}
+function openBulkStatusModal(type){
+  const ids=[...SELECTION.ids];
+  openModal(`<span class="modal-close" onclick="closeModal()">&times;</span>
+    <h2>Change status &mdash; ${ids.length} selected</h2>
+    ${type==='item'?'<div class="hint">This sets location directly on each selected item, independent of any container it belongs to.</div>':'<div class="hint">This cascades from each selected container to its contents, same as scanning it individually.</div>'}
+    <label class="f">New location</label>
+    <select id="bulkStatusSelect">${(type==='item'?ALL_LOCS:CONTAINER_LOCS).map(l=>`<option value="${l.key}">${l.label}</option>`).join('')}</select>
+    <div class="row" style="margin-top:18px;justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="submitBulkStatus('${type}')">Update ${ids.length}</button>
+    </div>`);
+}
+function submitBulkStatus(type){
+  const newLoc=document.getElementById('bulkStatusSelect').value;
+  const ids=[...SELECTION.ids];
+  ids.forEach(id=>{
+    if(type==='item') setItemLocationDirect(id,newLoc,currentUserName());
+    else cascadeContainer(id,newLoc,'manual',currentUserName());
+  });
+  closeModal(); clearSelection(); render();
+}
+function openBulkPhaseModal(){
+  const ids=[...SELECTION.ids];
+  openModal(`<span class="modal-close" onclick="closeModal()">&times;</span>
+    <h2>Change phase &mdash; ${ids.length} selected</h2>
+    <div class="hint">Sets install phase directly on each selected item.</div>
+    <label class="f">New phase</label>
+    <select id="bulkPhaseSelect"><option value="rough-in">Rough-in</option><option value="trim-out">Trim-out</option></select>
+    <div class="row" style="margin-top:18px;justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="submitBulkPhase()">Update ${ids.length}</button>
+    </div>`);
+}
+function submitBulkPhase(){
+  const newPhase=document.getElementById('bulkPhaseSelect').value;
+  const ids=[...SELECTION.ids];
+  ids.forEach(id=>{
+    const it=getItem(id);
+    if(it){ const prev=it.phase; it.phase=newPhase; addLog('item',it.id,it.code,prev,newPhase,'phase changed (bulk)',currentUserName()); }
+  });
+  closeModal(); clearSelection(); render();
+}
+function splitSiblingOf(it){
+  if(!it.splitGroupId) return null;
+  return DB.items.find(x=>x.splitGroupId===it.splitGroupId && x.id!==it.id)||null;
+}
+function itemsTabHTML(j){
+  const q=UI.q.trim().toLowerCase();
+  const items=itemsInJob(j.id).filter(i=>(UI.cat==='all'||i.category===UI.cat) && (!q || i.code.toLowerCase().includes(q) || i.productName.toLowerCase().includes(q) || (i.vendor||'').toLowerCase().includes(q)));
+  const groups=ALL_LOCS.map(loc=>({loc,list:items.filter(i=>i.location===loc.key)}));
+  const sections=groups.map(g=>{
+    const rows=g.list.map(it=>{
+      const c=it.containerId?getContainer(it.containerId):null;
+      const checked=SELECTION.type==='item'&&SELECTION.ids.has(it.id);
+      const sib=splitSiblingOf(it);
+      return `<tr class="rowlink" onclick="openItemModal('${it.id}')">
+        <td onclick="event.stopPropagation()"><input type="checkbox" ${checked?'checked':''} onclick="event.stopPropagation()" onchange="toggleSelect('item','${it.id}')"></td>
+        <td>${it.photo?`<img class="rowthumb" src="${it.photo}">`:'<div class="rowthumb empty">Photo</div>'}</td>
+        <td>${it.code}</td>
+        <td>${escapeHtml(it.productName)}${it.variant?'<div class="sub" style="margin-top:2px">'+escapeHtml(it.variant)+'</div>':''}${it.componentTotal?`<div class="sub" style="margin-top:2px">&#128230; ${it.componentIndex||1} of ${it.componentTotal}</div>`:''}${sib?`<div class="split-tag" onclick="event.stopPropagation();openItemModal('${sib.id}')">&#8646; split with ${sib.code} (${phaseText(sib.phase)})</div>`:''}</td>
+        <td>${catBadge(it.category)}</td>
+        <td>${phaseBadge(it.phase)}</td>
+        <td>${it.trackAs==='package'?it.qty+' <span class="sub">(package)</span>':'1'}</td>
+        <td>${it.vendor?escapeHtml(it.vendor):'&mdash;'}</td>
+        <td class="sub">${fmtDate(it.createdAt)}</td>
+        <td>${c?c.code:'<span class="sub">Unassigned</span>'}</td>
+      </tr>`;
+    }).join('');
+    return `<div class="loc-group">
+      <div class="loc-group-header ${isException(g.loc.key)?'exception':''}">
+        <span class="lg-collapse" onclick="toggleGroupCollapse('item:${g.loc.key}')">${COLLAPSED_GROUPS.has('item:'+g.loc.key)?'&#9656;':'&#9662;'}</span>
+        ${g.list.length?`<input type="checkbox" ${g.list.every(x=>SELECTION.type==='item'&&SELECTION.ids.has(x.id))?'checked':''} onchange="toggleSelectGroup('item',[${g.list.map(x=>"'"+x.id+"'").join(',')}],this.checked)" title="Select all in ${g.loc.label}">`:''}
+        <span class="lgname">${g.loc.label}</span><span class="lgcount">${g.list.length}</span>
+      </div>
+      ${COLLAPSED_GROUPS.has('item:'+g.loc.key)?'':(g.list.length?`<table><thead><tr><th></th><th></th><th>Code</th><th>Product</th><th>Category</th><th>Phase</th><th>Qty</th><th>Vendor</th><th>Added</th><th>Pallet / Tote</th></tr></thead>
+      <tbody>${rows}</tbody></table>`:`<div class="empty" style="padding:16px;font-size:12.5px">No items currently in ${g.loc.label}.</div>`)}
+    </div>`;
+  }).join('');
+  return `${selectionBarHTML('item','item')}
+    <div class="row" style="justify-content:space-between;margin-bottom:12px">
+      <div class="row">${catFilterHTML()}${searchBoxHTML('Search code, product, vendor...')}</div>
+      <div class="row">
+        <button class="btn ghost small" onclick="setAllGroupsCollapsed('item',[${ALL_LOCS.map(l=>"'"+l.key+"'").join(',')}],true)">Collapse all</button>
+        <button class="btn ghost small" onclick="setAllGroupsCollapsed('item',[${ALL_LOCS.map(l=>"'"+l.key+"'").join(',')}],false)">Expand all</button>
+        <button class="btn secondary" onclick="openBulkImportModal('${j.id}')">Bulk import</button>
+        <button class="btn" onclick="openNewItemModal('${j.id}')">+ Add item</button>
+      </div>
+    </div>
+    ${items.length===0?'<div class="empty" style="margin-bottom:18px">No items match this filter.</div>':''}
+    ${sections}`;
+}
+
+function containerCardsHTML(j,type){
+  const q=UI.q.trim().toLowerCase();
+  const list=containersInJob(j.id,type).filter(c=>(UI.cat==='all'||c.category===UI.cat) && (!q || c.code.toLowerCase().includes(q)));
+  if(!list.length) return `<div class="empty">No ${type}s ${(UI.cat==='all'&&!q)?'built for this job yet':'match this filter'}.</div>`;
+  const groups=CONTAINER_LOCS.map(loc=>({loc,list:list.filter(c=>c.location===loc.key)}));
+  const cardFor=c=>{
+    const contents=itemsInJob(j.id).filter(i=>i.containerId===c.id);
+    const nestedTotes=type==='pallet'?DB.containers.filter(x=>x.parentId===c.id):[];
+    const checked=SELECTION.type==='container'&&SELECTION.ids.has(c.id);
+    return `<div class="card rowlink" style="position:relative;padding-top:38px" onclick="openContainerDetailModal('${c.id}')">
+      <input type="checkbox" class="ccard-check" ${checked?'checked':''} onclick="event.stopPropagation()" onchange="toggleSelect('container','${c.id}')">
+      <div class="row" style="justify-content:space-between">
+        <strong>${c.code}</strong>${containerBadge(c.location)}
+      </div>
+      <div class="row" style="margin-top:6px">${catBadge(c.category)}</div>
+      <div class="sub" style="margin:6px 0 10px">${contents.length} item${contents.length===1?'':'s'}${type==='pallet'?(nestedTotes.length?' &middot; '+nestedTotes.length+' tote'+(nestedTotes.length===1?'':'s'):' &middot; no tote'):''}${type==='tote'&&c.parentId?' &middot; on '+getContainer(c.parentId).code:''}</div>
+      <div class="row" onclick="event.stopPropagation()">
+        <button class="btn small secondary" onclick="openContainerLabelModal('${c.id}')">Print label</button>
+        <button class="btn small ghost" onclick="openStatusModal('${c.id}')">Change status</button>
+      </div>
+    </div>`;
+  };
+  const sections=groups.map(g=>`<div class="loc-group">
+      <div class="loc-group-header ${isException(g.loc.key)?'exception':''}">
+        <span class="lg-collapse" onclick="toggleGroupCollapse('${type}:${g.loc.key}')">${COLLAPSED_GROUPS.has(type+':'+g.loc.key)?'&#9656;':'&#9662;'}</span>
+        ${g.list.length?`<input type="checkbox" ${g.list.every(x=>SELECTION.type==='container'&&SELECTION.ids.has(x.id))?'checked':''} onchange="toggleSelectGroup('container',[${g.list.map(x=>"'"+x.id+"'").join(',')}],this.checked)" title="Select all in ${g.loc.label}">`:''}
+        <span class="lgname">${g.loc.label}</span><span class="lgcount">${g.list.length}</span>
+      </div>
+      ${COLLAPSED_GROUPS.has(type+':'+g.loc.key)?'':(g.list.length?`<div class="grid job-grid">${g.list.map(cardFor).join('')}</div>`:`<div class="empty" style="padding:16px;font-size:12.5px">No ${type}s currently in ${g.loc.label}.</div>`)}
+    </div>`).join('');
+  return `<div class="row" style="justify-content:flex-end;margin-bottom:10px">
+      <button class="btn ghost small" onclick="setAllGroupsCollapsed('${type}',[${CONTAINER_LOCS.map(l=>"'"+l.key+"'").join(',')}],true)">Collapse all</button>
+      <button class="btn ghost small" onclick="setAllGroupsCollapsed('${type}',[${CONTAINER_LOCS.map(l=>"'"+l.key+"'").join(',')}],false)">Expand all</button>
+    </div>
+    ${selectionBarHTML('container',type)}${sections}`;
+}
+function openContainerDetailModal(containerId){
+  const c=getContainer(containerId); if(!c) return;
+  const items=itemsInJob(c.jobId).filter(i=>i.containerId===c.id);
+  const nested=DB.containers.filter(x=>x.parentId===c.id);
+  const hist=historyFor(c.id).map(h=>`<div>${fmtDateTime(h.changedAt)} &mdash; ${h.prev?locLabel(h.prev)+' &rarr; ':''}${locLabel(h.next)} <span style="opacity:.7">(${h.trigger})</span></div>`).join('')||'<div>No history yet.</div>';
+  openModal(`<span class="modal-close" onclick="closeModal()">&times;</span>
+    <h2>${c.code} <span class="badge loc" style="margin-left:6px">${type_label(c.type)}</span> ${catBadge(c.category)}</h2>
+    <div class="sub">${escapeHtml(getJob(c.jobId).name)} &middot; built ${fmtDate(c.createdAt)} &middot; currently ${locLabel(c.location)}${c.type==='tote'?(c.parentId&&getContainer(c.parentId)?' &middot; nested on '+getContainer(c.parentId).code:' &middot; standalone (not on a pallet)'):''}</div>
+    <hr class="divider">
+    <label class="f">Exact contents</label>
+    <div id="containerSlipHost">${items.length||nested.length?slipHTML(c,items,nested):'<div class="empty" style="padding:14px">Nothing loaded on this '+c.type+'.</div>'}</div>
+    <hr class="divider">
+    <div class="two-col">
+      <div><label class="f">Change status</label>
+        <select onchange="cascadeContainer('${c.id}',this.value,'manual',currentUserName());closeModal();openContainerDetailModal('${c.id}')">
+          ${CONTAINER_LOCS.map(l=>`<option value="${l.key}" ${c.location===l.key?'selected':''}>${l.label}</option>`).join('')}
+        </select>
+      </div>
+      <div><label class="f">Print actions</label>
+        <div class="row">
+          <button class="btn small secondary" onclick="openContainerLabelModal('${c.id}')">Label</button>
+          <button class="btn small secondary" onclick="printNode('containerSlipHost','slip')">Slip</button>
+        </div>
+      </div>
+    </div>
+    <label class="f">History</label>
+    <div class="history">${hist}</div>
+    <div class="row" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Close</button>
+      <button class="btn secondary" onclick="openEditContainerModal('${c.id}')">Edit contents</button>
+    </div>`,'wide');
+}
+function type_label(t){return t==='pallet'?'Pallet':'Tote';}
+function palletsTabHTML(j){
+  return `<div class="row" style="justify-content:space-between;margin-bottom:12px">
+      <div class="row">${catFilterHTML()}${searchBoxHTML('Search pallet code...')}</div>
+      <button class="btn" onclick="openNewContainerModal('${j.id}','pallet')">+ Build pallet</button>
+    </div>${containerCardsHTML(j,'pallet')}`;
+}
+function totesTabHTML(j){
+  return `<div class="row" style="justify-content:space-between;margin-bottom:12px">
+      <div class="row">${catFilterHTML()}${searchBoxHTML('Search tote code...')}</div>
+      <button class="btn" onclick="openNewContainerModal('${j.id}','tote')">+ Build tote</button>
+    </div>${containerCardsHTML(j,'tote')}`;
+}
+
+function openEditContainerModal(containerId){
+  const c=getContainer(containerId); if(!c) return;
+  const currentItems=itemsInJob(c.jobId).filter(i=>i.containerId===c.id);
+  const availableItems=itemsInJob(c.jobId).filter(i=>!i.containerId);
+  const itemPool=[...currentItems,...availableItems];
+  const currentTotes=c.type==='pallet'?DB.containers.filter(x=>x.parentId===c.id):[];
+  const availableTotes=c.type==='pallet'?containersInJob(c.jobId,'tote').filter(t=>!t.parentId && t.id!==c.id):[];
+  const totePool=[...currentTotes,...availableTotes];
+  openModal(`<span class="modal-close" onclick="closeModal()">&times;</span>
+    <h2>Edit ${c.code}</h2>
+    <div class="sub">Add or remove contents. Removed items/totes become unassigned, not deleted.</div>
+    <label class="f">Category</label>
+    <select id="ecCategory">${cats().map(cat=>`<option value="${cat}" ${cat===c.category?'selected':''}>${cat}</option>`).join('')}</select>
+    <label class="f" style="margin-top:14px">Items</label>
+    <div class="checklist">
+      ${itemPool.length? itemPool.map(i=>`<label><input type="checkbox" value="${i.id}" class="ecItemChk" ${i.containerId===c.id?'checked':''}><span class="cl-code">${i.code}</span><span class="cl-name">${escapeHtml(i.productName)}</span>${catBadge(i.category)}</label>`).join('') : '<div class="none">No items available.</div>'}
+    </div>
+    ${c.type==='pallet'?`<label class="f">Totes</label>
+    <div class="checklist">
+      ${totePool.length? totePool.map(t=>`<label><input type="checkbox" value="${t.id}" class="ecToteChk" ${t.parentId===c.id?'checked':''}><span class="cl-code">${t.code}</span><span class="cl-name">${itemsInJob(c.jobId).filter(i=>i.containerId===t.id).length} items</span></label>`).join('') : '<div class="none">No totes available.</div>'}
+    </div>`:''}
+    <div class="row" style="margin-top:20px;justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="submitEditContainer('${c.id}')">Save changes</button>
+    </div>`,'wide');
+}
+function submitEditContainer(containerId){
+  const c=getContainer(containerId); if(!c) return;
+  c.category=document.getElementById('ecCategory').value;
+  const checkedItemIds=new Set([...document.querySelectorAll('.ecItemChk:checked')].map(el=>el.value));
+  itemsInJob(c.jobId).forEach(it=>{
+    const shouldBeIn=checkedItemIds.has(it.id);
+    const isIn=it.containerId===c.id;
+    if(shouldBeIn && !isIn){it.containerId=c.id; it.location=c.location;}
+    else if(!shouldBeIn && isIn){it.containerId=null;}
+  });
+  if(c.type==='pallet'){
+    const checkedToteIds=new Set([...document.querySelectorAll('.ecToteChk:checked')].map(el=>el.value));
+    containersInJob(c.jobId,'tote').forEach(t=>{
+      const shouldBeIn=checkedToteIds.has(t.id);
+      const isIn=t.parentId===c.id;
+      if(shouldBeIn && !isIn){t.parentId=c.id; t.location=c.location;}
+      else if(!shouldBeIn && isIn){t.parentId=null;}
+    });
+  }
+  addLog('container',c.id,c.code,null,c.location,'contents edited',currentUserName());
+  closeModal(); render(); openContainerDetailModal(c.id);
+}
+let BULK_IMPORT={headers:[],rows:[],images:[]};
+const IMPORT_FIELDS=[
+  {key:'productName',label:'Product name',required:true},
+  {key:'variant',label:'Variant / description'},
+  {key:'vendor',label:'Vendor'},
+  {key:'category',label:'Category'},
+  {key:'phase',label:'Phase (rough-in/trim-out)'},
+  {key:'qty',label:'Quantity'},
+  {key:'roomLocation',label:'Location'},
+  {key:'planMarker',label:'Plan marker'},
+  {key:'photoUrl',label:'Photo URL'}
+];
+function openBulkImportModal(jobId){
+  openModal(`<span class="modal-close" onclick="closeModal()">&times;</span>
+    <h2>Bulk import items</h2>
+    <div class="sub">Upload an XLSX or CSV file, then map its columns to item fields.</div>
+    <label class="f">File</label>
+    <input id="bulkFile" type="file" accept=".xlsx,.xls,.csv" onchange="handleBulkFile(event,'${jobId}')">
+    <div id="bulkErr" style="display:none;color:var(--danger);font-size:12px;margin-top:6px"></div>
+    <label class="f" style="margin-top:14px">Plan location link <span class="sub">(applied to every item in this import)</span></label>
+    <input id="bulkPlanUrl" placeholder="https://plans.mitchellconstruction.com/morris?category=plumbing">
+    <div class="hint">Since you're importing a whole category at once, this one link gets applied to every item in the batch rather than mapping it per row.</div>
+    <div id="bulkMapHost"></div>`,'wide');
+}
+function handleBulkFile(evt,jobId){
+  const file=evt.target.files[0];
+  const errEl=document.getElementById('bulkErr');
+  if(!file) return;
+  if(!window.XLSX){errEl.textContent='File parser failed to load (needs internet access). Try again once you have a connection.';errEl.style.display='block';return;}
+  const isXlsx=/\.xlsx$/i.test(file.name);
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const buf=e.target.result;
+      const wb=XLSX.read(buf,{type:'array'});
+      const sheet=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});
+      if(!rows.length){errEl.textContent='That file has no rows.';errEl.style.display='block';return;}
+      BULK_IMPORT.headers=rows[0].map(h=>String(h||'').trim());
+      BULK_IMPORT.rows=rows.slice(1).filter(r=>r.some(cell=>String(cell||'').trim()));
+      BULK_IMPORT.images=[];
+      errEl.style.display='none';
+      if(isXlsx && window.JSZip){
+        JSZip.loadAsync(buf).then(zip=>{
+          const mediaFiles=Object.keys(zip.files).filter(n=>/^xl\/media\//i.test(n));
+          mediaFiles.sort((a,b)=>{
+            const na=parseInt((a.match(/(\d+)/)||['0'])[0]);
+            const nb=parseInt((b.match(/(\d+)/)||['0'])[0]);
+            return na-nb;
+          });
+          Promise.all(mediaFiles.map(name=>{
+            const ext=(name.split('.').pop()||'png').toLowerCase();
+            const mime=ext==='jpg'||ext==='jpeg'?'image/jpeg':ext==='gif'?'image/gif':ext==='bmp'?'image/bmp':'image/png';
+            return zip.files[name].async('base64').then(b64=>'data:'+mime+';base64,'+b64);
+          })).then(images=>{
+            BULK_IMPORT.images=images;
+            renderBulkMapUI(jobId);
+          });
+        }).catch(()=>{ renderBulkMapUI(jobId); });
+      } else {
+        renderBulkMapUI(jobId);
+      }
+    }catch(err){
+      errEl.textContent='Could not read that file: '+err.message;
+      errEl.style.display='block';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+function guessColumn(fieldKey,fieldLabel,headers){
+  const norm=s=>s.toLowerCase().replace(/[^a-z0-9]/g,'');
+  const target=norm(fieldLabel.split('(')[0]);
+  let idx=headers.findIndex(h=>norm(h)===target);
+  if(idx===-1){
+    const aliases={productName:['product','item','name'],variant:['description','finish','notes'],vendor:['supplier'],category:['type','trade'],phase:['stage'],qty:['quantity','count'],roomLocation:['location','room'],planMarker:['marker','plan'],photoUrl:['photo','image','picture']};
+    const alist=aliases[fieldKey]||[];
+    idx=headers.findIndex(h=>alist.some(a=>norm(h).includes(a)));
+  }
+  return idx;
+}
+function renderBulkMapUI(jobId){
+  const headers=BULK_IMPORT.headers;
+  const host=document.getElementById('bulkMapHost');
+  const imgCount=BULK_IMPORT.images.length;
+  const countMatches=imgCount===BULK_IMPORT.rows.length;
+  host.innerHTML=`
+    <label class="f" style="margin-top:16px">Map columns</label>
+    ${IMPORT_FIELDS.map(f=>{
+      const guess=guessColumn(f.key,f.label,headers);
+      return `<div class="row" style="margin-bottom:6px">
+        <div style="width:180px;font-size:13px">${f.label}${f.required?' <span style="color:var(--danger)">*</span>':''}</div>
+        <select id="map_${f.key}" style="flex:1" ${f.key==='photoUrl'&&imgCount?'disabled':''}>
+          <option value="-1">&mdash; Skip &mdash;</option>
+          ${headers.map((h,i)=>`<option value="${i}" ${i===guess?'selected':''}>${escapeHtml(h||'(column '+(i+1)+')')}</option>`).join('')}
+        </select>
+        ${guess===-1&&(f.key==='roomLocation'||f.key==='planMarker')?'<span class="sub" style="color:var(--warn);width:150px">No column matched \u2014 check this</span>':''}
+      </div>`;
+    }).join('')}
+    ${imgCount?`<div class="hint" style="margin-top:4px">
+      Found ${imgCount} embedded photo${imgCount===1?'':'s'} in this file.
+      ${countMatches?' That matches your row count, so photos will be matched to rows top-to-bottom in the order they appear in the file.':' That doesn\'t match your row count ('+BULK_IMPORT.rows.length+' rows) \u2014 order-based matching would likely misassign some photos. Double-check placement after import, or use a Photo URL column instead.'}
+      <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-weight:400;text-transform:none;cursor:pointer">
+        <input type="checkbox" id="useEmbeddedPhotos" ${countMatches?'checked':''}> Use these embedded photos, matched to rows in order
+      </label>
+    </div>`:`<div class="sub" style="margin-top:8px">No embedded photos found in this file. Photo URL pulls an image from a link in a column instead.</div>`}
+    <label class="f" style="margin-top:14px">Preview (first 3 rows)</label>
+    <div style="overflow:auto;border:1px solid var(--border);border-radius:8px">
+      <table style="font-size:12px"><thead><tr>${headers.map(h=>`<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>
+      <tbody>${BULK_IMPORT.rows.slice(0,3).map(r=>`<tr>${headers.map((h,i)=>`<td>${escapeHtml(String(r[i]||''))}</td>`).join('')}</tr>`).join('')}</tbody></table>
+    </div>
+    <div id="bulkImportErr" style="display:none;color:var(--danger);font-size:12px;margin-top:8px"></div>
+    <div class="row" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="submitBulkImport('${jobId}')">Import ${BULK_IMPORT.rows.length} item${BULK_IMPORT.rows.length===1?'':'s'}</button>
+    </div>`;
+}
+function submitBulkImport(jobId){
+  const mapping={};
+  IMPORT_FIELDS.forEach(f=>{ mapping[f.key]=parseInt(document.getElementById('map_'+f.key).value); });
+  if(mapping.productName<0){
+    const errEl=document.getElementById('bulkImportErr');
+    errEl.textContent='Product name must be mapped to a column \u2014 it\'s the one field every item needs.';
+    errEl.style.display='block';
+    return;
+  }
+  const validCats=cats();
+  const useEmbedded=document.getElementById('useEmbeddedPhotos')&&document.getElementById('useEmbeddedPhotos').checked;
+  const sharedPlanUrl=document.getElementById('bulkPlanUrl').value.trim();
+  let count=0;
+  const emptyFieldCounts={roomLocation:0,planMarker:0,vendor:0,category:0};
+  BULK_IMPORT.rows.forEach((r,idx)=>{
+    const get=key=>mapping[key]>=0?String(r[mapping[key]]||'').trim():'';
+    const productName=get('productName');
+    if(!productName) return;
+    const rawCat=get('category');
+    const category=validCats.find(c=>c.toLowerCase()===rawCat.toLowerCase())||validCats[validCats.length-1];
+    const rawPhase=get('phase').toLowerCase();
+    const phase=rawPhase.includes('rough')?'rough-in':'trim-out';
+    const qtyRaw=parseInt(get('qty'))||1;
+    const photo=useEmbedded?(BULK_IMPORT.images[idx]||''):get('photoUrl');
+    const roomLocation=get('roomLocation');
+    const planMarker=get('planMarker');
+    if(!roomLocation) emptyFieldCounts.roomLocation++;
+    if(!planMarker) emptyFieldCounts.planMarker++;
+    if(!get('vendor')) emptyFieldCounts.vendor++;
+    const it={
+      id:uid('i'), code:nextCode('item'), jobId,
+      productName, variant:get('variant'), vendor:get('vendor'), category, phase,
+      trackAs:qtyRaw>1?'package':'individual', qty:qtyRaw,
+      roomLocation, planMarker, planUrl:sharedPlanUrl,
+      photo, containerId:null, location:'office', createdAt:Date.now()
+    };
+    DB.items.push(it);
+    addLog('item',it.id,it.code,null,'office','created (bulk import)',currentUserName());
+    count++;
+  });
+  closeModal(); render();
+  let msg=count+' item'+(count===1?'':'s')+' imported.';
+  if(count>0){
+    const warnings=[];
+    if(mapping.roomLocation>=0 && emptyFieldCounts.roomLocation===count) warnings.push('Location came out blank for every row \u2014 the mapped column had no usable values, or the wrong column is selected.');
+    if(mapping.planMarker>=0 && emptyFieldCounts.planMarker===count) warnings.push('Plan marker came out blank for every row \u2014 same likely cause.');
+    if(mapping.roomLocation<0) warnings.push('Location wasn\'t mapped to a column at all, so it\'s blank on every imported item.');
+    if(warnings.length) msg+='\n\nHeads up:\n'+warnings.join('\n');
+  }
+  alert(msg);
+}
+function openNewItemModal(jobId){
+  openModal(`<span class="modal-close" onclick="closeModal()">&times;</span>
+    <h2>Add item</h2>
+    <label class="f">Product name</label><input id="itName" placeholder="e.g. Delta Trinsic Single Hole Faucet">
+    <div id="itErr" style="display:none;color:var(--danger);font-size:12px;margin-top:4px"></div>
+    <label class="f">Variant / description</label><input id="itVariant" placeholder="e.g. Matte black">
+    <div class="two-col">
+      <div><label class="f">Vendor</label><input id="itVendor" placeholder="e.g. Build.com"></div>
+      <div><label class="f">Category</label><select id="itCategory">${cats().map(c=>`<option value="${c}">${c}</option>`).join('')}</select></div>
+    </div>
+    <div id="itNormalPhaseWrap">
+    <div class="two-col">
+      <div><label class="f">Install phase</label><select id="itPhase"><option value="rough-in">Rough-in</option><option value="trim-out">Trim-out</option></select></div>
+      <div><label class="f">Location</label><input id="itLocation" placeholder="e.g. Kitchen Island"></div>
+    </div>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:14px;cursor:pointer;color:var(--ink)">
+      <input type="checkbox" id="itSplitToggle" onchange="document.getElementById('itNormalPhaseWrap').style.display=this.checked?'none':'block';document.getElementById('itSplitWrap').style.display=this.checked?'block':'none';document.getElementById('itLocation2Wrap').style.display=this.checked?'block':'none';document.getElementById('itTrackAsWrap').style.display=this.checked?'none':'grid';document.getElementById('itCompWrap').style.display=this.checked?'none':'block'">
+      This arrived as one box but includes both rough-in and trim-out &mdash; split into two
+    </label>
+    <div id="itSplitWrap" style="display:none;margin-top:10px">
+      <div class="two-col">
+        <div><label class="f">Rough-in quantity</label><input id="itSplitRoughQty" type="number" min="0" value="1"></div>
+        <div><label class="f">Trim-out quantity</label><input id="itSplitTrimQty" type="number" min="0" value="1"></div>
+      </div>
+      <label class="f">What's in each &mdash; be specific</label>
+      <textarea id="itSplitNote" placeholder="e.g. Rough-in: valve body + supply lines. Trim-out: handle, spout, escutcheon plate."></textarea>
+      <div class="hint">Shown on both resulting items so anyone looking at either half knows exactly what the other one is, not just that it exists. Both get their own QR and container assignment, and start unassigned since the original box is being broken up.</div>
+    </div>
+    <div id="itLocation2Wrap" style="display:none;margin-top:10px"><label class="f">Location</label><input id="itLocationSplit" placeholder="e.g. Kitchen Island"></div>
+    <label class="f">Plan marker</label><input id="itMarker" placeholder="e.g. K12">
+    <label class="f">Plan location link</label><input id="itPlanUrl" placeholder="https://plans.mitchellconstruction.com/...">
+    <div class="hint">Link into your floor plan site showing where this item goes. Printed as a second QR on the label.</div>
+    <div id="itTrackAsWrap" class="two-col">
+      <div><label class="f">Track as</label><select id="itTrackAs" onchange="document.getElementById('itQtyWrap').style.display=this.value==='package'?'block':'none'"><option value="individual">Individual (own QR)</option><option value="package">Package (one QR, quantity)</option></select></div>
+      <div id="itQtyWrap" style="display:none"><label class="f">Quantity</label><input id="itQty" type="number" min="1" value="1"></div>
+    </div>
+    <div id="itCompWrap">
+    <label class="f">Components <span class="sub">(if this order arrived as multiple separate boxes)</span></label>
+    <div class="two-col">
+      <div><label class="f">This is box #</label><input id="itCompIndex" type="number" min="1" placeholder="e.g. 1"></div>
+      <div><label class="f">Out of total boxes</label><input id="itCompTotal" type="number" min="1" placeholder="e.g. 5"></div>
+    </div>
+    <div class="hint">Leave both blank if it's not part of a multi-box shipment. When filled in, the label shows "1 of 5" so everyone knows more pieces are coming.</div>
+    </div>
+    <label class="f">Photo</label><input id="itPhoto" type="file" accept="image/*">
+    <div class="row" style="margin-top:20px;justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="submitNewItem('${jobId}')">Save item</button>
+    </div>`);
+}
+function submitNewItem(jobId,presetCode,fromGenericId){
+  const name=document.getElementById('itName').value.trim();
+  const errEl=document.getElementById('itErr');
+  if(!name){errEl.textContent='Product name is required.';errEl.style.display='block';return;}
+  const splitOn=document.getElementById('itSplitToggle').checked;
+  const fileInput=document.getElementById('itPhoto');
+  const finish=(photoData)=>{
+    const base={
+      productName:name, variant:document.getElementById('itVariant').value.trim(),
+      vendor:document.getElementById('itVendor').value.trim(),
+      category:document.getElementById('itCategory').value,
+      planMarker:document.getElementById('itMarker').value.trim(),
+      planUrl:document.getElementById('itPlanUrl').value.trim(),
+      photo:photoData||'', containerId:null, location:'office', createdAt:Date.now()
+    };
+    if(splitOn){
+      const roughQty=parseInt(document.getElementById('itSplitRoughQty').value)||0;
+      const trimQty=parseInt(document.getElementById('itSplitTrimQty').value)||0;
+      const roomLocation=document.getElementById('itLocationSplit').value.trim();
+      const splitNote=document.getElementById('itSplitNote').value.trim();
+      if(!splitNote){errEl.textContent='Describe what\'s in each half before splitting \u2014 this is what keeps the two halves from being confusing later.';errEl.style.display='block';return;}
+      const splitGroupId=uid('sg');
+      DB.splitNotes[splitGroupId]=splitNote;
+      const created=[];
+      if(roughQty>0){
+        const it={...base, id:uid('i'), code:nextCode('item'), jobId, phase:'rough-in', trackAs:roughQty>1?'package':'individual', qty:roughQty, roomLocation, splitGroupId};
+        DB.items.push(it); addLog('item',it.id,it.code,null,'office','created (split, rough-in)',currentUserName()); created.push(it);
+      }
+      if(trimQty>0){
+        const it={...base, id:uid('i'), code:nextCode('item'), jobId, phase:'trim-out', trackAs:trimQty>1?'package':'individual', qty:trimQty, roomLocation, splitGroupId};
+        DB.items.push(it); addLog('item',it.id,it.code,null,'office','created (split, trim-out)',currentUserName()); created.push(it);
+      }
+      closeModal(); render();
+      if(created.length) openItemModal(created[0].id);
+      return;
+    }
+    const trackAs=document.getElementById('itTrackAs').value;
+    const it={...base,
+      id:uid('i'), code:presetCode||nextCode('item'), jobId,
+      phase:document.getElementById('itPhase').value,
+      trackAs, qty:trackAs==='package'?(parseInt(document.getElementById('itQty').value)||1):1,
+      roomLocation:document.getElementById('itLocation').value.trim(),
+      componentIndex:parseInt(document.getElementById('itCompIndex').value)||null,
+      componentTotal:parseInt(document.getElementById('itCompTotal').value)||null
+    };
+    DB.items.push(it);
+    if(fromGenericId){const g=DB.generics.find(x=>x.id===fromGenericId); if(g){g.status='assigned'; g.assignedItemId=it.id; g.assignedAt=Date.now();}}
+    addLog('item',it.id,it.code,null,'office','created',currentUserName());
+    closeModal();
+    render();
+    openItemModal(it.id);
+  };
+  if(fileInput && fileInput.files && fileInput.files[0]){
+    const reader=new FileReader();
+    reader.onload=e=>finish(e.target.result);
+    reader.readAsDataURL(fileInput.files[0]);
+  } else finish('');
+}
+function siblingSplitHTML(it){
+  if(!it.splitGroupId) return '';
+  const sibling=DB.items.find(x=>x.splitGroupId===it.splitGroupId && x.id!==it.id);
+  const note=DB.splitNotes[it.splitGroupId]||'';
+  return `<div class="card" style="background:#FAFAF8;margin-top:10px;padding:12px">
+    <div class="lfield">Split intake</div>
+    ${sibling?`<div style="margin-top:4px">Came from the same box as <a href="#" onclick="closeModal();openItemModal('${sibling.id}');return false"><strong>${sibling.code}</strong> (${phaseText(sibling.phase)}, qty ${sibling.qty})</a></div>`:'<div style="margin-top:4px">Sibling item not found (may have been deleted).</div>'}
+    <div style="margin-top:6px;font-size:13px">${escapeHtml(note)||'<span class="sub">No description saved.</span>'}</div>
+    <button class="btn small ghost" style="margin-top:8px" onclick="openEditSplitNoteModal('${it.splitGroupId}')">Edit description</button>
+  </div>`;
+}
+function openEditSplitNoteModal(splitGroupId){
+  openModal(`<span class="modal-close" onclick="closeModal()">&times;</span>
+    <h2>Edit split description</h2>
+    <div class="sub">Shown on both halves of this split.</div>
+    <textarea id="editSplitNoteInput" style="margin-top:10px">${escapeHtml(DB.splitNotes[splitGroupId]||'')}</textarea>
+    <div class="row" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="DB.splitNotes['${splitGroupId}']=document.getElementById('editSplitNoteInput').value.trim();closeModal();render()">Save</button>
+    </div>`);
+}
+function openItemModal(itemId){
+  const it=getItem(itemId); if(!it) return;
+  const c=it.containerId?getContainer(it.containerId):null;
+  const hist=historyFor(it.id).map(h=>`<div>${fmtDateTime(h.changedAt)} &mdash; ${h.prev?locLabel(h.prev)+' &rarr; ':''}${locLabel(h.next)} <span style="opacity:.7">(${h.trigger})</span></div>`).join('')||'<div>No history yet.</div>';
+  openModal(`<span class="modal-close" onclick="closeModal()">&times;</span>
+    <h2>${escapeHtml(it.productName)}</h2>
+    <div class="sub">${it.code} &middot; ${escapeHtml(it.jobId?getJob(it.jobId).name:'')}</div>
+    <div id="itemLabelHost" style="margin-top:16px"></div>
+    ${siblingSplitHTML(it)}
+    <hr class="divider">
+    <div class="two-col">
+      <div><label class="f">Pallet / Tote</label><div>${c?c.code+' ('+type_label(c.type)+', '+locLabel(c.location)+')':'Unassigned'}${c?` <span style="cursor:pointer;color:var(--info);font-size:12px" onclick="removeItemFromContainer('${it.id}')">(remove)</span>`:''}</div></div>
+      <div><label class="f">Set location manually</label>
+        <select onchange="setItemLocationDirect('${it.id}',this.value,currentUserName());closeModal();openItemModal('${it.id}')">
+          ${ALL_LOCS.map(l=>`<option value="${l.key}" ${it.location===l.key?'selected':''}>${l.label}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <label class="f">History</label>
+    <div class="history">${hist}</div>
+    <div class="row" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Close</button>
+      ${it.splitGroupId?'':`<button class="btn secondary" onclick="openSplitExistingModal('${it.id}')">Split rough-in / trim-out</button>`}
+      <button class="btn secondary" onclick="openEditItemModal('${it.id}')">Edit</button>
+      <button class="btn secondary" onclick="printNode('itemLabelHost','label')">Print label</button>
+    </div>`);
+  const host=document.getElementById('itemLabelHost');
+  const {html,qr}=renderItemLabel(it);
+  host.innerHTML=html;
+  mountQRs(qr);
+}
+function openSplitExistingModal(itemId){
+  const it=getItem(itemId); if(!it) return;
+  const otherPhase=it.phase==='rough-in'?'trim-out':'rough-in';
+  openModal(`<span class="modal-close" onclick="closeModal()">&times;</span>
+    <h2>Split ${it.code}</h2>
+    <div class="sub">${escapeHtml(it.productName)} is currently ${phaseText(it.phase)} only.</div>
+    <div class="hint" style="margin-top:8px">This creates a new ${phaseText(otherPhase)} item alongside it, sharing the same product info. Since the box is being broken up, both become unassigned from any pallet/tote until reboxed.</div>
+    <label class="f">${phaseText(otherPhase)} quantity</label><input id="splitQty" type="number" min="1" value="1">
+    <label class="f">What's in each half &mdash; be specific</label>
+    <textarea id="splitNoteInput" placeholder="e.g. Rough-in: valve body + supply lines. Trim-out: handle, spout, escutcheon plate."></textarea>
+    <div id="splitErr" style="display:none;color:var(--danger);font-size:12px;margin-top:4px"></div>
+    <div class="row" style="margin-top:20px;justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="submitSplitExisting('${it.id}')">Create ${phaseText(otherPhase)} item</button>
+    </div>`);
+}
+function submitSplitExisting(itemId){
+  const it=getItem(itemId); if(!it) return;
+  if(it.splitGroupId){alert('This item has already been split. Edit its quantity directly instead of splitting again.');return;}
+  const note=document.getElementById('splitNoteInput').value.trim();
+  if(!note){
+    const errEl=document.getElementById('splitErr');
+    errEl.textContent='Describe what\'s in each half before splitting \u2014 this is what keeps the two halves from being confusing later.';
+    errEl.style.display='block';
+    return;
+  }
+  const qty=parseInt(document.getElementById('splitQty').value)||1;
+  const otherPhase=it.phase==='rough-in'?'trim-out':'rough-in';
+  it.splitGroupId=uid('sg');
+  DB.splitNotes[it.splitGroupId]=note;
+  it.containerId=null;
+  const sibling={
+    id:uid('i'), code:nextCode('item'), jobId:it.jobId,
+    productName:it.productName, variant:it.variant, vendor:it.vendor, category:it.category,
+    phase:otherPhase, trackAs:qty>1?'package':'individual', qty,
+    roomLocation:it.roomLocation, planMarker:it.planMarker, planUrl:it.planUrl,
+    photo:it.photo, containerId:null, location:it.location, createdAt:Date.now(),
+    splitGroupId:it.splitGroupId
+  };
+  DB.items.push(sibling);
+  addLog('item',it.id,it.code,null,it.location,'split into '+sibling.code+' ('+phaseText(otherPhase)+')',currentUserName());
+  addLog('item',sibling.id,sibling.code,null,sibling.location,'split from '+it.code,currentUserName());
+  closeModal(); render(); openItemModal(sibling.id);
+}
+
+function openEditItemModal(itemId){
+  const it=getItem(itemId); if(!it) return;
+  openModal(`<span class="modal-close" onclick="closeModal()">&times;</span>
+    <h2>Edit item</h2>
+    <label class="f">Product name</label><input id="itName" value="${escapeHtml(it.productName)}">
+    <div id="itErr" style="display:none;color:var(--danger);font-size:12px;margin-top:4px"></div>
+    <label class="f">Variant / description</label><input id="itVariant" value="${escapeHtml(it.variant||'')}">
+    <div class="two-col">
+      <div><label class="f">Vendor</label><input id="itVendor" value="${escapeHtml(it.vendor||'')}"></div>
+      <div><label class="f">Category</label><select id="itCategory">${cats().map(c=>`<option value="${c}" ${c===it.category?'selected':''}>${c}</option>`).join('')}</select></div>
+    </div>
+    <div class="two-col">
+      <div><label class="f">Install phase</label><select id="itPhase"><option value="rough-in" ${it.phase==='rough-in'?'selected':''}>Rough-in</option><option value="trim-out" ${it.phase==='trim-out'?'selected':''}>Trim-out</option></select></div>
+      <div><label class="f">Location</label><input id="itLocation" value="${escapeHtml(it.roomLocation||'')}"></div>
+    </div>
+    <label class="f">Plan marker</label><input id="itMarker" value="${escapeHtml(it.planMarker||'')}">
+    <label class="f">Plan location link</label><input id="itPlanUrl" value="${escapeHtml(it.planUrl||'')}" placeholder="https://plans.mitchellconstruction.com/...">
+    <div class="hint">Link into your floor plan site showing where this item goes. Printed as a second QR on the label.</div>
+    <div class="two-col">
+      <div><label class="f">Track as</label><select id="itTrackAs" onchange="document.getElementById('itQtyWrap').style.display=this.value==='package'?'block':'none'"><option value="individual" ${it.trackAs==='individual'?'selected':''}>Individual (own QR)</option><option value="package" ${it.trackAs==='package'?'selected':''}>Package (one QR, quantity)</option></select></div>
+      <div id="itQtyWrap" style="display:${it.trackAs==='package'?'block':'none'}"><label class="f">Quantity</label><input id="itQty" type="number" min="1" value="${it.qty||1}"></div>
+    </div>
+    <label class="f">Components <span class="sub">(if this order arrived as multiple separate boxes)</span></label>
+    <div class="two-col">
+      <div><label class="f">This is box #</label><input id="itCompIndex" type="number" min="1" value="${it.componentIndex||''}" placeholder="e.g. 1"></div>
+      <div><label class="f">Out of total boxes</label><input id="itCompTotal" type="number" min="1" value="${it.componentTotal||''}" placeholder="e.g. 5"></div>
+    </div>
+    <label class="f">Photo</label><input id="itPhoto" type="file" accept="image/*">
+    ${it.photo?`<div class="sub" style="margin-top:6px">Leave blank to keep the current photo.</div>`:''}
+    ${it.containerId?`<div class="hint" style="margin-top:10px">This item is assigned to ${getContainer(it.containerId).code}. Editing details here doesn't change that assignment.</div>`:''}
+    <div class="row" style="margin-top:20px;justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="submitEditItem('${it.id}')">Save changes</button>
+    </div>`);
+}
+function submitEditItem(itemId){
+  const it=getItem(itemId); if(!it) return;
+  const name=document.getElementById('itName').value.trim();
+  const errEl=document.getElementById('itErr');
+  if(!name){errEl.textContent='Product name is required.';errEl.style.display='block';return;}
+  const fileInput=document.getElementById('itPhoto');
+  const finish=(photoData)=>{
+    it.productName=name;
+    it.variant=document.getElementById('itVariant').value.trim();
+    it.vendor=document.getElementById('itVendor').value.trim();
+    it.category=document.getElementById('itCategory').value;
+    it.phase=document.getElementById('itPhase').value;
+    it.trackAs=document.getElementById('itTrackAs').value;
+    it.qty=it.trackAs==='package'?(parseInt(document.getElementById('itQty').value)||1):1;
+    it.roomLocation=document.getElementById('itLocation').value.trim();
+    it.componentIndex=parseInt(document.getElementById('itCompIndex').value)||null;
+    it.componentTotal=parseInt(document.getElementById('itCompTotal').value)||null;
+    it.planMarker=document.getElementById('itMarker').value.trim();
+    it.planUrl=document.getElementById('itPlanUrl').value.trim();
+    if(photoData) it.photo=photoData;
+    closeModal(); render(); openItemModal(it.id);
+  };
+  if(fileInput && fileInput.files && fileInput.files[0]){
+    const reader=new FileReader();
+    reader.onload=e=>finish(e.target.result);
+    reader.readAsDataURL(fileInput.files[0]);
+  } else finish(null);
+}
+function openNewContainerModal(jobId,type){
+  const unassignedItems=itemsInJob(jobId).filter(i=>!i.containerId);
+  const openTotes= type==='pallet' ? containersInJob(jobId,'tote').filter(t=>!t.parentId) : [];
+  const suggestedCat=unassignedItems[0]?unassignedItems[0].category:'General';
+  openModal(`<span class="modal-close" onclick="closeModal()">&times;</span>
+    <h2>Build ${type}</h2>
+    <div class="sub">Contents are locked once you close and print &mdash; built all at once, in the office.</div>
+    ${type==='pallet'?`<div class="hint" style="margin-top:8px">Totes are built and closed on their own, then loaded onto a pallet here. Once loaded, the tote travels with the pallet until someone scans the tote directly &mdash; that automatically detaches it so it can move independently (e.g. taking rough-in material to site early).</div>`:''}
+    <div class="two-col">
+      <div><label class="f">Category</label><select id="ncCategory">${cats().map(c=>`<option value="${c}" ${c===suggestedCat?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div><label class="f">Starting location</label><select id="ncStartLoc">${LOCATIONS.filter(l=>l.key!=='installed').map(l=>`<option value="${l.key}" ${l.key==='office'?'selected':''}>${l.label}</option>`).join('')}</select></div>
+    </div>
+    <label class="f">Scan to add</label>
+    <div class="row">
+      <input id="scanInput" style="flex:1" placeholder="Scan an item${type==='pallet'?' or tote':''} QR code, or type its code, then press Enter" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();handleScanAdd(this.value,'${jobId}','${type}');this.value='';}">
+      <button class="btn secondary" type="button" onclick="openCameraScan('${jobId}','${type}')">Use camera</button>
+    </div>
+    <div id="scanFeedback" style="font-size:12px;margin-top:4px;min-height:16px"></div>
+    <label class="f">Items to include</label>
+    <div class="checklist">
+      ${unassignedItems.length? unassignedItems.map(i=>`<label><input type="checkbox" value="${i.id}" class="itemChk"><span class="cl-code">${i.code}</span><span class="cl-name">${escapeHtml(i.productName)}</span><span class="badge loc">${escapeHtml(i.category)}</span>${phaseBadge(i.phase)}</label>`).join('') : '<div class="none">No unassigned items available.</div>'}
+    </div>
+    ${type==='pallet'?`<label class="f">Totes to load onto this pallet</label>
+    <div class="checklist">
+      ${openTotes.length? openTotes.map(t=>`<label><input type="checkbox" value="${t.id}" class="toteChk"><span class="cl-code">${t.code}</span><span class="cl-name">${itemsInJob(jobId).filter(i=>i.containerId===t.id).length} items</span><span class="badge loc">${escapeHtml(t.category||'General')}</span></label>`).join('') : '<div class="none">No standalone totes available to load.</div>'}
+    </div>`:''}
+    <div class="row" style="margin-top:20px;justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="submitNewContainer('${jobId}','${type}')">Close &amp; generate label</button>
+    </div>
+    <div id="ncErr" style="display:none;color:var(--danger);font-size:12px;margin-top:8px;text-align:right"></div>`);
+}
+function handleScanAdd(raw,jobId,type){
+  const code=raw.trim();
+  const bareCode=code.split(':')[0];
+  const fb=document.getElementById('scanFeedback');
+  if(!code) return;
+  const item=itemsInJob(jobId).find(i=>!i.containerId && i.code.toLowerCase()===bareCode.toLowerCase());
+  if(item){
+    const cb=document.querySelector('.itemChk[value="'+item.id+'"]');
+    if(cb) cb.checked=true;
+    fb.style.color='var(--success)';
+    fb.textContent='Added '+item.code+' \u2014 '+item.productName;
+    const si=document.getElementById('scanInput'); if(si) si.focus();
+    return;
+  }
+  if(type==='pallet'){
+    const tote=containersInJob(jobId,'tote').find(t=>!t.parentId && t.code.toLowerCase()===bareCode.toLowerCase());
+    if(tote){
+      const cb=document.querySelector('.toteChk[value="'+tote.id+'"]');
+      if(cb) cb.checked=true;
+      fb.style.color='var(--success)';
+      fb.textContent='Added tote '+tote.code;
+      const si=document.getElementById('scanInput'); if(si) si.focus();
+      return;
+    }
+  }
+  fb.style.color='var(--danger)';
+  fb.textContent='No unassigned item'+(type==='pallet'?' or standalone tote':'')+' found for "'+escapeHtml(bareCode)+'". It may already be assigned elsewhere.';
+  const si=document.getElementById('scanInput'); if(si) si.focus();
+}
+let SCAN_STREAM=null;
+let SCAN_RAF=null;
+function openCameraScan(jobId,type){
+  const overlay=document.createElement('div');
+  overlay.id='cameraOverlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(20,22,34,.92);z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:14px';
+  overlay.innerHTML=`
+    <video id="scanVideo" autoplay playsinline muted style="width:100%;max-width:420px;border-radius:14px;background:#000;border:2px solid rgba(255,255,255,.3)"></video>
+    <div id="cameraFeedback" style="color:#fff;font-size:14px;text-align:center;min-height:20px;max-width:420px">Point the camera at a QR code.</div>
+    <button class="btn secondary" onclick="closeCameraScan()">Done scanning</button>`;
+  document.body.appendChild(overlay);
+  if(!window.jsQR){
+    document.getElementById('cameraFeedback').textContent='QR decoder failed to load (needs internet access). Use the text field to type codes instead.';
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(stream=>{
+    SCAN_STREAM=stream;
+    const video=document.getElementById('scanVideo');
+    video.srcObject=stream;
+    const canvas=document.createElement('canvas');
+    const ctx=canvas.getContext('2d');
+    let lastCode='',lastAt=0;
+    function tick(){
+      if(!SCAN_STREAM) return;
+      const v=document.getElementById('scanVideo');
+      if(v && v.readyState===v.HAVE_ENOUGH_DATA){
+        canvas.width=v.videoWidth; canvas.height=v.videoHeight;
+        ctx.drawImage(v,0,0,canvas.width,canvas.height);
+        const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
+        const result=jsQR(imgData.data,imgData.width,imgData.height);
+        if(result && result.data){
+          const now=Date.now();
+          if(result.data!==lastCode || now-lastAt>1500){
+            lastCode=result.data; lastAt=now;
+            handleScanAdd(result.data,jobId,type);
+            const fb=document.getElementById('cameraFeedback');
+            const mainFb=document.getElementById('scanFeedback');
+            if(fb) fb.textContent = mainFb ? mainFb.textContent : ('Scanned: '+result.data);
+          }
+        }
+      }
+      SCAN_RAF=requestAnimationFrame(tick);
+    }
+    tick();
+  }).catch(err=>{
+    const fb=document.getElementById('cameraFeedback');
+    if(fb) fb.innerHTML='Camera access failed: '+escapeHtml(err.message)+'.<br><br>On some phones, camera access only works when this page is hosted on a real web address (http/https), not opened as a local file. If this keeps failing, use the text field to type codes instead.';
+  });
+}
+function closeCameraScan(){
+  if(SCAN_RAF){cancelAnimationFrame(SCAN_RAF); SCAN_RAF=null;}
+  if(SCAN_STREAM){SCAN_STREAM.getTracks().forEach(t=>t.stop()); SCAN_STREAM=null;}
+  const overlay=document.getElementById('cameraOverlay');
+  if(overlay) overlay.remove();
+}
+function submitNewContainer(jobId,type){
+  const itemIds=[...document.querySelectorAll('.itemChk:checked')].map(el=>el.value);
+  const toteIds=[...document.querySelectorAll('.toteChk:checked')].map(el=>el.value);
+  if(!itemIds.length && !toteIds.length){
+    const errEl=document.getElementById('ncErr');
+    if(errEl){errEl.textContent='Select at least one item'+(type==='pallet'?' or tote':'')+' before closing.';errEl.style.display='block';}
+    return;
+  }
+  const category=document.getElementById('ncCategory').value;
+  const startLoc=document.getElementById('ncStartLoc').value;
+  const c={id:uid('c'),code:nextCode(type),type,jobId,parentId:null,category,location:startLoc,createdAt:Date.now()};
+  DB.containers.push(c);
+  itemIds.forEach(id=>{const it=getItem(id); if(it){it.containerId=c.id; it.location=startLoc;}});
+  toteIds.forEach(id=>{const t=getContainer(id); if(t){t.parentId=c.id; t.location=startLoc;}});
+  addLog('container',c.id,c.code,null,startLoc,'built',null);
+  closeModal(); render();
+  openContainerLabelModal(c.id);
+}
+
+/* ---------------- container status / slip / label ---------------- */
+function openStatusModal(containerId){
+  const c=getContainer(containerId); if(!c) return;
+  openModal(`<span class="modal-close" onclick="closeModal()">&times;</span>
+    <h2>Scan: change status</h2>
+    <div class="sub">${c.code} &middot; currently ${locLabel(c.location)}</div>
+    ${c.type==='tote'&&c.parentId?`<div class="hint">This tote is nested on ${getContainer(c.parentId).code}. Changing its status directly will detach it so it can travel on its own.</div>`:''}
+    <label class="f">New location</label>
+    <select id="statusSelect">${CONTAINER_LOCS.map(l=>`<option value="${l.key}" ${c.location===l.key?'selected':''}>${l.label}</option>`).join('')}</select>
+    <div class="hint">This cascades to everything on this ${c.type} except items already further along or flagged missing/returned.</div>
+    <div class="row" style="margin-top:18px;justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="submitStatusChange('${c.id}')">Update status</button>
+    </div>`);
+}
+function submitStatusChange(containerId){
+  const newLoc=document.getElementById('statusSelect').value;
+  cascadeContainer(containerId,newLoc,'manual',currentUserName());
+  closeModal(); render();
+}
+function openSlipModal(containerId){
+  const c=getContainer(containerId); if(!c) return;
+  const items=itemsInJob(c.jobId).filter(i=>i.containerId===c.id);
+  const nested=DB.containers.filter(x=>x.parentId===c.id);
+  openModal(`<span class="modal-close" onclick="closeModal()">&times;</span>
+    <div id="slipPrintTarget">${slipHTML(c,items,nested)}</div>
+    <div class="row" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Close</button>
+      <button class="btn secondary" onclick="printNode('slipPrintTarget','slip')">Print slip</button>
+    </div>`,'wide');
+}
+function letterheadHTML(){
+  const s=DB.settings;
+  const contactLines=[];
+  if(s.address) contactLines.push(escapeHtml(s.address));
+  const p2=[s.phone?escapeHtml(s.phone):'',s.email?escapeHtml(s.email):''].filter(Boolean).join(' &middot; ');
+  if(p2) contactLines.push(p2);
+  return `<div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #000;padding-bottom:12px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="llogobox" style="width:56px;height:56px">${s.logo?`<img src="${s.logo}">`:'Your logo'}</div>
+      <div><div style="font-weight:700;font-size:16px">${escapeHtml(s.companyName)}</div>
+      ${contactLines.map(l=>`<div style="font-size:11.5px;color:var(--muted)">${l}</div>`).join('')}</div>
+    </div>
+    <div style="text-align:right;font-size:11px;color:var(--muted)">
+      ${s.siteContactName?`<div><strong>Site contact:</strong> ${escapeHtml(s.siteContactName)}${s.siteContactPhone?' &middot; '+escapeHtml(s.siteContactPhone):''}</div>`:''}
+      ${s.selCoordName?`<div><strong>Selections:</strong> ${escapeHtml(s.selCoordName)}${s.selCoordPhone?' &middot; '+escapeHtml(s.selCoordPhone):''}</div>`:''}
+    </div>
+  </div>`;
+}
+function slipHTML(c,items,nested){
+  const photoCell=i=>i.photo?`<img src="${i.photo}" style="width:32px;height:32px;object-fit:cover;border-radius:4px;border:1px solid var(--border)">`:`<div style="width:32px;height:32px;border-radius:4px;border:1px solid var(--border);background:#FAFAF8"></div>`;
+  const rows=items.map(i=>`<tr><td>${photoCell(i)}</td><td>${i.code}</td><td>${escapeHtml(i.productName)}</td><td>${phaseBadge(i.phase)}</td><td>${i.trackAs==='package'?i.qty:1}</td><td>${escapeHtml(i.vendor||'')}</td></tr>`).join('');
+  const nestedRows=nested.map(t=>{
+    const tItems=itemsInJob(c.jobId).filter(i=>i.containerId===t.id);
+    return `<tr><td colspan="6" style="background:#FAFAF8;font-weight:600">Tote ${t.code} &mdash; ${tItems.length} items</td></tr>`+
+      tItems.map(i=>`<tr><td>${photoCell(i)}</td><td style="padding-left:20px">${i.code}</td><td>${escapeHtml(i.productName)}</td><td>${phaseBadge(i.phase)}</td><td>${i.trackAs==='package'?i.qty:1}</td><td>${escapeHtml(i.vendor||'')}</td></tr>`).join('');
+  }).join('');
+  return `${letterheadHTML()}
+    <h2 style="margin-bottom:2px">Inventory slip &mdash; ${c.code}</h2>
+    <div class="sub">${getJob(c.jobId).name} &middot; built ${fmtDate(c.createdAt)}</div>
+    <div class="slip" style="margin-top:14px">
+      <table><thead><tr><th></th><th>Code</th><th>Product</th><th>Phase</th><th>Qty</th><th>Vendor</th></tr></thead>
+      <tbody>${rows}${nestedRows}</tbody></table>
+    </div>`;
+}
+function openContainerLabelModal(containerId){
+  const c=getContainer(containerId); if(!c) return;
+  openModal(`<span class="modal-close" onclick="closeModal()">&times;</span>
+    <div id="labelHost"></div>
+    <div class="row" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Close</button>
+      <button class="btn secondary" onclick="printNode('labelHost','label')">Print label</button>
+    </div>`,'wide');
+  const host=document.getElementById('labelHost');
+  const {html,qr}=renderContainerLabel(c);
+  host.innerHTML=html;
+  mountQRs(qr);
+}
+function setPrintPageSize(mode){
+  let style=document.getElementById('printPageStyle');
+  if(!style){style=document.createElement('style'); style.id='printPageStyle'; document.head.appendChild(style);}
+  style.innerHTML = mode==='label' ? '@page{size:6in 4in;margin:0.08in}' : '@page{size:auto;margin:0.5in}';
+}
+function printNode(id,mode){
+  setPrintPageSize(mode);
+  const area=document.getElementById('printArea');
+  area.innerHTML=document.getElementById(id).innerHTML;
+  area.style.display='block';
+  window.print();
+  setTimeout(()=>{area.style.display='none';area.innerHTML='';},300);
+}
+function bulkPrintLabels(type){
+  const ids=[...SELECTION.ids];
+  if(!ids.length) return;
+  const parts=[]; const qrAll=[];
+  ids.forEach(id=>{
+    const res = type==='item' ? renderItemLabel(getItem(id)) : type==='generic' ? renderGenericLabel(DB.generics.find(x=>x.id===id)) : renderContainerLabel(getContainer(id));
+    parts.push(`<div class="label-page">${res.html}</div>`);
+    qrAll.push(...res.qr);
+  });
+  const area=document.getElementById('printArea');
+  area.innerHTML=parts.join('');
+  area.style.display='block';
+  mountQRs(qrAll);
+  setPrintPageSize('label');
+  setTimeout(()=>{
+    window.print();
+    setTimeout(()=>{area.style.display='none';area.innerHTML='';clearSelection();render();},300);
+  },80);
+}
+
+/* ---------------- generic label queue ---------------- */
+function genericQueueHTML(){
+  const list=DB.generics;
+  return `<div class="crumb" onclick="go('dashboard')">&larr; Dashboard</div>
+    <div class="topbar">
+      <div><h1>Generic label queue</h1><div class="sub">Pre-printed blank QR codes for material that never ran through normal receiving</div></div>
+      <button class="btn" onclick="openBatchModal()">+ Print batch of blank labels</button>
+    </div>
+    ${selectionBarHTML('generic','label')}
+    ${list.length?`<table><thead><tr><th></th><th>Code</th><th>Status</th><th>Assigned item</th><th>Logged by</th><th></th></tr></thead><tbody>
+      ${list.map(g=>{
+        const it=g.assignedItemId?getItem(g.assignedItemId):null;
+        const checked=SELECTION.type==='generic'&&SELECTION.ids.has(g.id);
+        return `<tr><td><input type="checkbox" ${checked?'checked':''} onchange="toggleSelect('generic','${g.id}')"></td><td>${g.code}</td><td><span class="badge ${g.status==='assigned'?'active':'loc'}">${g.status}</span></td>
+        <td>${it?`<a href="#" onclick="openItemModal('${it.id}');return false">${it.code} &mdash; ${escapeHtml(it.productName)}</a>`:'&mdash;'}</td>
+        <td>${g.assignedBy||'&mdash;'}</td>
+        <td class="row" style="gap:6px">
+          <button class="btn small secondary" onclick="openGenericLabelModal('${g.id}')">View label</button>
+          ${g.status==='unassigned'?`<button class="btn small ghost" onclick="openAssignGenericModal('${g.id}')">Assign</button>`:`<button class="btn small ghost" onclick="openItemModal('${it.id}')">Go to item</button>`}
+        </td></tr>`;
+      }).join('')}
+    </tbody></table>`:'<div class="empty">No generic labels printed yet.</div>'}`;
+}
+function openBatchModal(){
+  openModal(`<span class="modal-close" onclick="closeModal()">&times;</span>
+    <h2>Print batch of blank labels</h2>
+    <label class="f">How many?</label><input id="batchN" type="number" min="1" value="10">
+    <div class="row" style="margin-top:18px;justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="submitBatch()">Generate</button>
+    </div>`);
+}
+function submitBatch(){
+  const n=parseInt(document.getElementById('batchN').value)||0;
+  for(let i=0;i<n;i++){DB.generics.push({id:uid('g'),code:nextCode('generic'),status:'unassigned',assignedItemId:null,assignedBy:null,assignedAt:null});}
+  closeModal(); go('generic');
+}
+function openAssignGenericModal(genericId){
+  const g=DB.generics.find(x=>x.id===genericId); if(!g) return;
+  const activeJobs=DB.jobs.filter(j=>j.status==='active');
+  const unassignedByJob=jobId=>itemsInJob(jobId).filter(i=>!i.containerId);
+  openModal(`<span class="modal-close" onclick="closeModal()">&times;</span>
+    <h2>Assign ${g.code}</h2>
+    <label class="f">Job</label>
+    <select id="gJob" onchange="renderGenericExistingList(this.value)">
+      ${activeJobs.map(j=>`<option value="${j.id}">${escapeHtml(j.name)}</option>`).join('')}
+    </select>
+    <label class="f">Logged by</label><input id="gBy" value="${escapeHtml(currentUserName())}">
+    <hr class="divider">
+    <div class="row" style="gap:10px">
+      <button class="btn secondary" style="flex:1" onclick="createFromGeneric('${g.id}')">Create new item</button>
+      <button class="btn secondary" style="flex:1" onclick="document.getElementById('existingWrap').style.display='block'">Attach to existing item</button>
+    </div>
+    <div id="existingWrap" style="display:none;margin-top:14px">
+      <label class="f">Existing unassigned items</label>
+      <div class="checklist" id="existingList"></div>
+      <div class="row" style="margin-top:12px;justify-content:flex-end">
+        <button class="btn" onclick="attachGenericToExisting('${g.id}')">Attach</button>
+      </div>
+      <div id="gaErr" style="display:none;color:var(--danger);font-size:12px;margin-top:6px;text-align:right"></div>
+    </div>`,'wide');
+  window.renderGenericExistingList=(jobId)=>{
+    const el=document.getElementById('existingList'); if(!el) return;
+    const items=unassignedByJob(jobId);
+    el.innerHTML=items.length? items.map(i=>`<label><input type="radio" name="existingItem" value="${i.id}"> ${i.code} &mdash; ${escapeHtml(i.productName)}</label>`).join('') : '<div class="none">No unassigned items in this job.</div>';
+  };
+  setTimeout(()=>{const sel=document.getElementById('gJob'); if(sel) renderGenericExistingList(sel.value);},0);
+}
+function createFromGeneric(genericId){
+  const jobId=document.getElementById('gJob').value;
+  const by=document.getElementById('gBy').value.trim()||currentUserName();
+  const g=DB.generics.find(x=>x.id===genericId); if(g){g.assignedBy=by;}
+  closeModal();
+  openNewItemModal(jobId);
+  const modal=document.querySelector('.modal');
+  const saveBtn=modal.querySelector('button.btn:not(.ghost)');
+  saveBtn.setAttribute('onclick',`submitNewItem('${jobId}','${g.code}','${genericId}')`);
+}
+function attachGenericToExisting(genericId){
+  const sel=document.querySelector('input[name="existingItem"]:checked');
+  if(!sel){
+    const errEl=document.getElementById('gaErr');
+    if(errEl){errEl.textContent='Select an item to attach to.';errEl.style.display='block';}
+    return;
+  }
+  const by=document.getElementById('gBy').value.trim()||currentUserName();
+  const g=DB.generics.find(x=>x.id===genericId);
+  g.status='assigned'; g.assignedItemId=sel.value; g.assignedBy=by; g.assignedAt=Date.now();
+  addLog('item',sel.value,getItem(sel.value).code,null,null,'attached to generic label '+g.code,by);
+  closeModal(); go('generic');
+}
+
+function renderGenericLabel(g){
+  const it=g.assignedItemId?getItem(g.assignedItemId):null;
+  const qrId='qrg_'+g.id+'_'+Math.random().toString(36).slice(2,7);
+  const blank=`style="border-bottom:1.5px dashed var(--border);min-height:1.2em"`;
+  const html=`<div class="label">
+    <div class="lgrid">
+      <div class="lleft">
+        <div class="lk">Generic label</div>
+        <p class="ltitle" ${blank}>&nbsp;</p>
+        <hr class="lhr">
+        <p class="lvariant">${g.code}</p>
+        <div class="lphotorow">
+          <div class="lphoto"></div>
+          <div class="ldbox"><div class="ldcell"><div class="lfield">Location</div><p class="lval" ${blank}>&nbsp;</p></div><div class="ldcell"><div class="lfield">Bin / pallet</div><p class="lval" ${blank}>&nbsp;</p></div></div>
+        </div>
+      </div>
+      <div class="lright">
+        ${logoBoxHTML()}
+        <hr class="lhr2">
+        <div class="lplanwrap">
+          <div class="lfield">Plan marker</div>
+          <div class="lcircle"><p class="lcircval" ${blank} style="width:60%">&nbsp;</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="lbottom"><div class="lcatwrap">${catIconHTML()}<div><div class="lfield">Category</div><p class="lval" ${blank}>&nbsp;</p></div></div>
+      <div class="qrblock-bottom">
+        <div class="qrpair-lg">
+          <div class="qrwrap-lg" id="${qrId}"></div>
+        </div>
+        <div class="qrlblrow-lg"><span class="qrlbl-lg">${it?'Scan to view item':'Scan to assign'}</span></div>
+      </div>
+    </div>
+  </div>`;
+  return {html,qr:[{id:qrId,value:g.code}]};
+}
+function openGenericLabelModal(genericId){
+  const g=DB.generics.find(x=>x.id===genericId); if(!g) return;
+  openModal(`<span class="modal-close" onclick="closeModal()">&times;</span>
+    <div id="genLabelHost"></div>
+    <div class="row" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Close</button>
+      <button class="btn secondary" onclick="printNode('genLabelHost','label')">Print label</button>
+    </div>`,'wide');
+  const host=document.getElementById('genLabelHost');
+  const {html,qr}=renderGenericLabel(g);
+  host.innerHTML=html;
+  mountQRs(qr);
+}
+function settingsHTML(){
+  const s=DB.settings;
+  return `<div class="crumb" onclick="go('dashboard')">&larr; Dashboard</div>
+    <div class="topbar"><div><h1>Settings</h1><div class="sub">White-label branding applied to every label and slip</div></div></div>
+    <div class="card" style="max-width:480px">
+      <label class="f">Company name</label><input id="setName" value="${escapeHtml(s.companyName)}">
+      <label class="f">Logo</label>
+      <div class="row">
+        <div class="llogobox" style="width:52px;height:52px">${s.logo?`<img src="${s.logo}">`:'No logo'}</div>
+        <input id="setLogo" type="file" accept="image/*" style="flex:1">
+      </div>
+      <label class="f">Label font</label>
+      <select id="setFont">
+        ${['Anton','Bebas Neue','Archivo Black','Oswald'].map(f=>`<option value="${f}" ${s.font===f?'selected':''}>${f}</option>`).join('')}
+      </select>
+      <div class="row" style="margin-top:18px;justify-content:flex-end">
+        <button class="btn" onclick="saveSettings()">Save settings</button>
+      </div>
+    </div>
+    <div class="card" style="max-width:480px;margin-top:16px">
+      <label class="f">Company contact info</label>
+      <div class="sub" style="margin-bottom:10px">Used on packing slips and other printed documents. Site contact and selections coordinator print separately so trades/clients know who to call.</div>
+      <label class="f">Address</label><input id="setAddress" value="${escapeHtml(s.address||'')}" placeholder="Street, city, state, ZIP">
+      <div class="two-col">
+        <div><label class="f">Phone</label><input id="setPhone" value="${escapeHtml(s.phone||'')}" placeholder="417-555-0123"></div>
+        <div><label class="f">Email</label><input id="setEmail" value="${escapeHtml(s.email||'')}" placeholder="office@mitchellconstruction.com"></div>
+      </div>
+      <div class="two-col">
+        <div><label class="f">Site contact name</label><input id="setSiteContactName" value="${escapeHtml(s.siteContactName||'')}"></div>
+        <div><label class="f">Site contact phone</label><input id="setSiteContactPhone" value="${escapeHtml(s.siteContactPhone||'')}"></div>
+      </div>
+      <div class="two-col">
+        <div><label class="f">Selections coordinator</label><input id="setSelCoordName" value="${escapeHtml(s.selCoordName||'')}"></div>
+        <div><label class="f">Coordinator phone</label><input id="setSelCoordPhone" value="${escapeHtml(s.selCoordPhone||'')}"></div>
+      </div>
+      <div class="row" style="margin-top:18px;justify-content:flex-end">
+        <button class="btn" onclick="saveSettings()">Save settings</button>
+      </div>
+    </div>
+    <div class="card" style="max-width:480px;margin-top:16px">
+      <label class="f">Categories</label>
+      <div class="sub" style="margin-bottom:10px">Used on items, pallets, and totes. Remove ones you don't use, add job-specific ones as needed.</div>
+      <div class="row" style="flex-wrap:wrap;gap:8px">
+        ${cats().map(c=>`<span class="badge cat" style="display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 10px">${escapeHtml(c)}<span style="cursor:pointer;font-weight:700" onclick="removeCategory('${escapeHtml(c).replace(/'/g,"\\'")}')">&times;</span></span>`).join('')}
+      </div>
+      <div class="row" style="margin-top:12px">
+        <input id="newCatInput" placeholder="e.g. Painting" style="flex:1">
+        <button class="btn secondary" onclick="addCategory()">Add</button>
+      </div>
+    </div>
+    <div class="card" style="max-width:520px;margin-top:16px">
+      <label class="f">Team directory</label>
+      <div class="sub" style="margin-bottom:10px">Everyone here signs in with their own login code at the start of a session and gets assigned tasks under their own name. Every change anyone makes is logged under whoever's actually signed in \u2014 there's no switching between people without signing out and back in. Important: since this is a browser-only app with no server, this is a real access gate for casual use, not bank-grade account security \u2014 the code is checked in your browser, not on a server, so treat it like a shared-device PIN rather than a password that protects against someone who can inspect the page itself.</div>
+      <button class="btn secondary" style="margin-bottom:10px" onclick="if(confirm('Sign out and return to the login screen?'))logOut()">Test sign-in screen</button>
+      ${DB.users.map(u=>`<div class="row" style="border-top:1px solid var(--border);padding:10px 0;align-items:center">
+        <div style="flex:1">
+          <div style="font-weight:500">${escapeHtml(u.name)}</div>
+          <div class="sub">${u.email?escapeHtml(u.email):''}${u.email&&u.phone?' &middot; ':''}${u.phone?escapeHtml(u.phone):''}${u.pin?' &middot; PIN set':''}</div>
+        </div>
+        <button class="btn small ghost" onclick="openEditTeamMemberModal('${u.id}')">Edit</button>
+        <button class="btn small ghost" onclick="removeTeamMember('${u.id}')" style="color:var(--danger)">Remove</button>
+      </div>`).join('')}
+      <button class="btn secondary" style="margin-top:12px" onclick="openAddTeamMemberModal()">+ Add team member</button>
+    </div>
+    <div class="card" style="max-width:480px;margin-top:16px">
+      <label class="f">Demo data</label>
+      <div class="sub" style="margin-bottom:10px">This demo persists in your browser's local storage only &mdash; nothing is sent anywhere.</div>
+      <button class="btn ghost" onclick="if(confirm('Reset all demo data?'))resetDemo()">Reset demo data</button>
+    </div>`;
+}
+function openAddTeamMemberModal(){
+  openModal(`<span class="modal-close" onclick="closeModal()">&times;</span>
+    <h2>Add team member</h2>
+    <label class="f">Name</label><input id="tmName" placeholder="e.g. Bre Mitchell">
+    <div id="tmErr" style="display:none;color:var(--danger);font-size:12px;margin-top:4px"></div>
+    <div class="two-col">
+      <div><label class="f">Email (optional)</label><input id="tmEmail" placeholder="bre@mitchellconstruction.com"></div>
+      <div><label class="f">Phone (optional)</label><input id="tmPhone" placeholder="417-555-0123"></div>
+    </div>
+    <label class="f">Login code <span style="color:var(--danger)">*</span></label><input id="tmPin" placeholder="4-digit code they use to sign in" maxlength="8">
+    <div class="row" style="margin-top:20px;justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="submitAddTeamMember()">Add</button>
+    </div>`);
+}
+function submitAddTeamMember(){
+  const name=document.getElementById('tmName').value.trim();
+  const pin=document.getElementById('tmPin').value.trim();
+  const errEl=document.getElementById('tmErr');
+  if(!name){errEl.textContent='Name is required.';errEl.style.display='block';return;}
+  if(!pin){errEl.textContent='A login code is required \u2014 this is what they use to sign in as themselves.';errEl.style.display='block';return;}
+  if(DB.users.some(u=>u.pin===pin)){errEl.textContent='That code is already in use by someone else \u2014 codes must be unique since they\'re the only thing identifying who\'s signed in.';errEl.style.display='block';return;}
+  DB.users.push({
+    id:uid('u'), name,
+    email:document.getElementById('tmEmail').value.trim(),
+    phone:document.getElementById('tmPhone').value.trim(),
+    pin
+  });
+  closeModal(); go('settings');
+}
+function openEditTeamMemberModal(userId){
+  const u=DB.users.find(x=>x.id===userId); if(!u) return;
+  openModal(`<span class="modal-close" onclick="closeModal()">&times;</span>
+    <h2>Edit team member</h2>
+    <label class="f">Name</label><input id="tmName" value="${escapeHtml(u.name)}">
+    <div id="tmErr" style="display:none;color:var(--danger);font-size:12px;margin-top:4px"></div>
+    <div class="two-col">
+      <div><label class="f">Email (optional)</label><input id="tmEmail" value="${escapeHtml(u.email||'')}"></div>
+      <div><label class="f">Phone (optional)</label><input id="tmPhone" value="${escapeHtml(u.phone||'')}"></div>
+    </div>
+    <label class="f">Login code <span style="color:var(--danger)">*</span></label><input id="tmPin" value="${escapeHtml(u.pin||'')}" maxlength="8">
+    <div class="row" style="margin-top:20px;justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="submitEditTeamMember('${u.id}')">Save</button>
+    </div>`);
+}
+function submitEditTeamMember(userId){
+  const u=DB.users.find(x=>x.id===userId); if(!u) return;
+  const name=document.getElementById('tmName').value.trim();
+  const pin=document.getElementById('tmPin').value.trim();
+  const errEl=document.getElementById('tmErr');
+  if(!name){errEl.textContent='Name is required.';errEl.style.display='block';return;}
+  if(!pin){errEl.textContent='A login code is required.';errEl.style.display='block';return;}
+  if(DB.users.some(x=>x.id!==userId && x.pin===pin)){errEl.textContent='That code is already in use by someone else \u2014 codes must be unique.';errEl.style.display='block';return;}
+  u.name=name;
+  u.email=document.getElementById('tmEmail').value.trim();
+  u.phone=document.getElementById('tmPhone').value.trim();
+  u.pin=pin;
+  closeModal(); go('settings');
+}
+function removeTeamMember(userId){
+  if(DB.users.length<=1){alert('At least one team member is required.');return;}
+  DB.users=DB.users.filter(u=>u.id!==userId);
+  if(DB.currentUserId===userId) DB.currentUserId=DB.users[0].id;
+  go('settings');
+}
+function tasksPanelHTML(){
+  const mine=UI.taskFilter==='mine';
+  const visible=DB.tasks.filter(t=>!t.done && (!mine || t.assignedToId===DB.currentUserId));
+  const isOverdue=t=>t.dueDate && new Date(t.dueDate) < new Date(new Date().toDateString());
+  const overdueCount=visible.filter(isOverdue).length;
+  const sorted=[...visible].sort((a,b)=>(isOverdue(b)-isOverdue(a))||(a.dueDate||'').localeCompare(b.dueDate||''));
+  return `<div class="tasks-panel">
+    <div class="tp-head">
+      <div>
+        <div class="tp-title">${mine?'My Tasks':'Team Tasks'}</div>
+        <div class="tp-sub">${visible.length} open task${visible.length===1?'':'s'}${overdueCount?' &middot; <strong>'+overdueCount+' overdue</strong>':''}</div>
+      </div>
+      <div class="row" style="gap:8px">
+        <div class="tp-filter">
+          <button class="${mine?'active':''}" onclick="setTaskFilter('mine')">Mine</button>
+          <button class="${!mine?'active':''}" onclick="setTaskFilter('all')">Everyone's</button>
+        </div>
+        <button class="btn small secondary" onclick="openAddTaskModal()">+ Add task</button>
+      </div>
+    </div>
+    ${sorted.length?sorted.map(t=>{
+      const assignee=DB.users.find(u=>u.id===t.assignedToId);
+      const job=t.jobId?getJob(t.jobId):null;
+      const od=isOverdue(t);
+      return `<div class="task-row">
+        <div class="task-dot ${od?'overdue':''}"></div>
+        <div class="task-main">
+          <div class="task-title">${escapeHtml(t.title)}</div>
+          <div class="task-sub">${job?escapeHtml(job.name)+' &middot; ':''}${!mine?'Assigned to '+escapeHtml(assignee?assignee.name:'Unknown'):'Added by '+escapeHtml(t.createdByName||'Unknown')}</div>
+          ${t.note?`<div class="task-note"><span class="tn-lbl">Note</span>${escapeHtml(t.note)}</div>`:''}
+        </div>
+        <div class="task-right">
+          <button class="btn small ghost" onclick="toggleTaskDone('${t.id}')">Done</button>
+          ${t.dueDate?`<div class="task-date ${od?'overdue':''}">${fmtDate(new Date(t.dueDate).getTime())}${od?' \u26a0':''}</div>`:''}
+        </div>
+      </div>`;
+    }).join(''):'<div class="sub" style="padding:10px 2px">Nothing open right now.</div>'}
+  </div>`;
+}
+function openAddTaskModal(){
+  openModal(`<span class="modal-close" onclick="closeModal()">&times;</span>
+    <h2>Add task</h2>
+    <label class="f">Title</label><input id="taskTitle" placeholder="e.g. Get wire mesh screen">
+    <div id="taskErr" style="display:none;color:var(--danger);font-size:12px;margin-top:4px"></div>
+    <div class="two-col">
+      <div><label class="f">Assign to</label><select id="taskAssignee">${DB.users.map(u=>`<option value="${u.id}" ${u.id===DB.currentUserId?'selected':''}>${escapeHtml(u.name)}</option>`).join('')}</select></div>
+      <div><label class="f">Job (optional)</label><select id="taskJob"><option value="">&mdash;</option>${DB.jobs.map(j=>`<option value="${j.id}">${escapeHtml(j.name)}</option>`).join('')}</select></div>
+    </div>
+    <label class="f">Due date (optional)</label><input id="taskDue" type="date">
+    <label class="f">Note (optional)</label><textarea id="taskNote" placeholder="Any detail worth flagging"></textarea>
+    <div class="row" style="margin-top:20px;justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="submitAddTask()">Add task</button>
+    </div>`);
+}
+function submitAddTask(){
+  const title=document.getElementById('taskTitle').value.trim();
+  const errEl=document.getElementById('taskErr');
+  if(!title){errEl.textContent='Task title is required.';errEl.style.display='block';return;}
+  DB.tasks.push({
+    id:uid('t'), title,
+    assignedToId:document.getElementById('taskAssignee').value,
+    jobId:document.getElementById('taskJob').value||null,
+    dueDate:document.getElementById('taskDue').value||null,
+    note:document.getElementById('taskNote').value.trim(),
+    createdById:DB.currentUserId, createdByName:currentUserName(),
+    createdAt:Date.now(), done:false
+  });
+  closeModal(); render();
+}
+function toggleTaskDone(taskId){
+  const t=DB.tasks.find(x=>x.id===taskId);
+  if(t){t.done=true; render();}
+}
+function addCategory(){
+  const input=document.getElementById('newCatInput');
+  const v=input.value.trim();
+  if(!v) return;
+  if(!DB.settings.categories.some(c=>c.toLowerCase()===v.toLowerCase())) DB.settings.categories.push(v);
+  go('settings');
+}
+function removeCategory(name){
+  DB.settings.categories=DB.settings.categories.filter(c=>c!==name);
+  go('settings');
+}
+function saveSettings(){
+  DB.settings.companyName=document.getElementById('setName').value.trim()||'Your company';
+  DB.settings.font=document.getElementById('setFont').value;
+  DB.settings.address=document.getElementById('setAddress').value.trim();
+  DB.settings.phone=document.getElementById('setPhone').value.trim();
+  DB.settings.email=document.getElementById('setEmail').value.trim();
+  DB.settings.siteContactName=document.getElementById('setSiteContactName').value.trim();
+  DB.settings.siteContactPhone=document.getElementById('setSiteContactPhone').value.trim();
+  DB.settings.selCoordName=document.getElementById('setSelCoordName').value.trim();
+  DB.settings.selCoordPhone=document.getElementById('setSelCoordPhone').value.trim();
+  const fileInput=document.getElementById('setLogo');
+  const finish=()=>{document.documentElement.style.setProperty('--font-display',"'"+DB.settings.font+"',sans-serif"); render(); go('settings');};
+  if(fileInput && fileInput.files && fileInput.files[0]){
+    const reader=new FileReader();
+    reader.onload=e=>{DB.settings.logo=e.target.result; finish();};
+    reader.readAsDataURL(fileInput.files[0]);
+  } else finish();
+}
+
+/* ---------------- label templates ---------------- */
+function logoBoxHTML(){
+  const s=DB.settings;
+  return `<div class="llogobox">${s.logo?`<img src="${s.logo}">`:'Your logo'}</div>`;
+}
+function catIconHTML(){return `<div class="lcaticon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 7.5l9-4 9 4-9 4-9-4z"/><path d="M3 7.5v9l9 4 9-4v-9"/><path d="M12 11.5v9"/></svg></div>`;}
+function itemPlanUrl(it){
+  return it.planUrl ? it.planUrl : null;
+}
+function renderItemLabel(it){
+  const c=it.containerId?getContainer(it.containerId):null;
+  const qrId='qr_'+it.id+'_'+Math.random().toString(36).slice(2,7);
+  const planUrl=itemPlanUrl(it);
+  const qrId2='qrp_'+it.id+'_'+Math.random().toString(36).slice(2,7);
+  const html=`<div class="label">
+    <div class="lgrid">
+      <div class="lleft">
+        <div class="lk">Product name${it.componentTotal?` &middot; <span style="color:var(--ink)">${it.componentIndex||1} of ${it.componentTotal}</span>`:''}</div>
+        <p class="ltitle">${escapeHtml(it.productName)}</p>
+        <hr class="lhr">
+        ${it.variant?`<p class="lvariant">${escapeHtml(it.variant)}</p>`:''}
+        <div class="lphotorow">
+          <div class="lphoto">${it.photo?`<img src="${it.photo}">`:'Product photo'}</div>
+          <div class="ldbox"><div class="ldcell"><div class="lfield">Location</div><p class="lval">${it.roomLocation?escapeHtml(it.roomLocation):'&mdash;'}</p></div><div class="ldcell"><div class="lfield">Bin / pallet</div><p class="lval">${c?c.code:'Unassigned'}</p></div></div>
+        </div>
+      </div>
+      <div class="lright">
+        ${logoBoxHTML()}
+        <hr class="lhr2">
+        <div class="lplanwrap">
+          <div class="lfield">Plan marker</div>
+          <div class="lcircle"><p class="lcircval" style="font-size:${(it.planMarker||'').length>6?'13px':(it.planMarker||'').length>3?'18px':'23px'};word-break:break-word;line-height:1.05;padding:0 4px">${it.planMarker?escapeHtml(it.planMarker):'&mdash;'}</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="lbottom"><div class="lcatwrap">${catIconHTML()}<div><div class="lfield">Category</div><p class="lval">${escapeHtml(it.category)}</p></div></div>
+      <div class="qrblock-bottom">
+        <div class="qrpair-lg">
+          <div class="qrwrap-lg" id="${qrId}"></div>
+          ${planUrl?`<div class="qrwrap-lg" id="${qrId2}"></div>`:`<div class="qrwrap-lg empty">No link set</div>`}
+        </div>
+        <div class="qrlblrow-lg"><span class="qrlbl-lg">Inventory</span><span class="qrlbl-lg">Plan location</span></div>
+      </div>
+    </div>
+  </div>`;
+  return {html,qr:planUrl?[{id:qrId,value:it.code},{id:qrId2,value:planUrl}]:[{id:qrId,value:it.code}]};
+}
+function renderContainerLabel(c){
+  const items=itemsInJob(c.jobId).filter(i=>i.containerId===c.id);
+  const nested=c.type==='pallet'?DB.containers.filter(x=>x.parentId===c.id):[];
+  const qStatus='qrs_'+c.id+'_'+Math.random().toString(36).slice(2,7);
+  const qSlip='qrl_'+c.id+'_'+Math.random().toString(36).slice(2,7);
+  const kicker=c.type==='pallet'?'Pallet':'Tote';
+  const midFields = c.type==='pallet'
+    ? `<div class="ldcell"><div class="lfield">Contains tote</div><p class="lval">${nested.length?'Yes &mdash; '+nested[0].code:'No'}</p></div><div class="ldcell"><div class="lfield">Built</div><p class="lval">${fmtDate(c.createdAt)}</p></div>`
+    : `<div class="ldcell"><div class="lfield">Phase</div><p class="lval">${items[0]?phaseText(items[0].phase):'Mixed'}</p></div><div class="ldcell"><div class="lfield">Built</div><p class="lval">${fmtDate(c.createdAt)}</p></div>`;
+  const html=`<div class="label">
+    <div class="lgrid">
+      <div class="lleft">
+        <div class="lk">${kicker}</div>
+        <p class="ltitle">${escapeHtml(getJob(c.jobId).name)}</p>
+        <hr class="lhr">
+        <p class="lvariant">${c.code}</p>
+        <div class="lphotorow">
+          <div class="lphoto">${containerIconSvg()}</div>
+          <div class="ldbox">${midFields}</div>
+        </div>
+      </div>
+      <div class="lright">
+        ${logoBoxHTML()}
+        <hr class="lhr2">
+        <div class="lplanwrap">
+          <div class="lfield">Contents</div>
+          <div class="lcircle"><p class="lcircval">${items.length}</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="lbottom"><div class="lcatwrap">${catIconHTML()}<div><div class="lfield">Category</div><p class="lval">${escapeHtml(c.category||'General')}</p></div></div>
+      <div class="qrblock-bottom">
+        <div class="qrpair-lg">
+          <div class="qrwrap-lg" id="${qStatus}"></div>
+          <div class="qrwrap-lg" id="${qSlip}"></div>
+        </div>
+        <div class="qrlblrow-lg"><span class="qrlbl-lg">Status</span><span class="qrlbl-lg">Slip</span></div>
+      </div>
+    </div>
+  </div>`;
+  return {html,qr:[{id:qStatus,value:c.code+':status'},{id:qSlip,value:c.code+':slip'}]};
+}
+function containerIconSvg(){return `<svg viewBox="0 0 24 24" width="34%" height="34%" fill="none" stroke="#B7B2A6" stroke-width="1.4" stroke-linejoin="round"><path d="M3 7.5l9-4 9 4-9 4-9-4z"/><path d="M3 7.5v9l9 4 9-4v-9"/><path d="M12 11.5v9"/></svg>`;}
+function phaseText(p){return p==='rough-in'?'Rough-in':'Trim-out';}
+function mountQRs(list){
+  list.forEach(q=>{
+    const el=document.getElementById(q.id);
+    if(el && window.QRCode){
+      el.innerHTML='';
+      const size=Math.max(40,Math.round(Math.min(el.clientWidth||110,el.clientHeight||110)))||110;
+      const qr=new QRCode(el,{text:q.value,width:size,height:size,correctLevel:QRCode.CorrectLevel.M});
+      const img=el.querySelector('img'); if(img){img.style.width='100%';img.style.height='100%';}
+      const canvas=el.querySelector('canvas'); if(canvas){canvas.style.width='100%';canvas.style.height='100%';}
+    }
+  });
+}
+
+/* ---------------- modal helpers ---------------- */
+function openModal(inner,size){
+  document.getElementById('modalRoot').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal ${size==='wide'?'wide':''}">${inner}</div></div>`;
+}
+function closeModal(){closeCameraScan();document.getElementById('modalRoot').innerHTML='';}
+function escapeHtml(s){return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+/* ---------------- init ---------------- */
+(async function init(){
+  DB=await loadFromSupabase();
+  document.documentElement.style.setProperty('--font-display',"'"+DB.settings.font+"',sans-serif");
+  const boot=document.getElementById('bootScreen'); if(boot) boot.remove();
+  render();
+  subscribeRealtime();
+})();
+</script>
+</body>
+</html>
